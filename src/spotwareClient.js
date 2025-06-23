@@ -1,4 +1,4 @@
-import { createClientAdapter, IExternalTransportAdapter } from '@spotware-web-team/external-api'
+import { createClientAdapter, IExternalTransportAdapter } from '@spotware-web-team/sdk-external-api'
 import { registerEvent, handleConfirmEvent } from '@spotware-web-team/sdk'
 import { take, tap, catchError } from 'rxjs'
 
