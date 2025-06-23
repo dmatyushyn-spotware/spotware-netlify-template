@@ -1,65 +1,58 @@
-import { createClientAdapter } from '@spotware-web-team/sdk-external-api'
+import { FC, useCallback, useEffect, useRef, useState } from "react";
+import { createClientAdapter, IExternalTransportAdapter } from "@spotware/external-api";
 import {
-  registerEvent,
+  getAccountInformation,
   handleConfirmEvent,
-  getAccountInformation
-} from '@spotware-web-team/sdk'
-import { take, tap, catchError } from 'rxjs'
-import { createLogger } from '@veksa/logger'
+  registerEvent
+} from "@spotware/sdk";
+import { catchError, take, tap } from "rxjs";
+import { createLogger } from "@veksa/logger";
 
-let client = null
+export const Example: FC = () => {
+  const [connected, setConnected] = useState(false);
+  const adapter = useRef<IExternalTransportAdapter>(null);
+  const [logs, setLogs] = useState<string[]>([]);
 
-export const connect = async (setStatus = () => {}, setAccountInfo = () => {}) => {
-  const logger = createLogger(true)
-  client = createClientAdapter({ logger })
+  useEffect(() => {
+    const logger = createLogger(true);
+    adapter.current = createClientAdapter({ logger });
 
-  try {
-    // Подтверждение соединения с хостом
-    handleConfirmEvent(client, {})
-      .pipe(take(1))
-      .subscribe(() => {
-        console.log('Confirmed with host')
+    // confirm initial connection
+    handleConfirmEvent(adapter.current, {}).pipe(take(1)).subscribe();
+
+    registerEvent(adapter.current).pipe(
+      take(1),
+      tap(() => {
+        handleConfirmEvent(adapter.current, {}).pipe(take(1)).subscribe();
+
+        // ✅ Теперь можно запрашивать информацию об аккаунте
+        getAccountInformation(adapter.current, {}).pipe(
+          take(1),
+          tap(result => {
+            setLogs(prevLogs => [...prevLogs, 'ACCOUNT INFO:\n' + JSON.stringify(result, null, 2)]);
+          })
+        ).subscribe();
+
+        setConnected(true);
+      }),
+      catchError((err) => {
+        setLogs(prevLogs => [...prevLogs, 'Error host connection: ' + err]);
+        return [];
       })
+    ).subscribe();
+  }, []);
 
-    // Регистрация клиента
-    registerEvent(client)
-      .pipe(
-        take(1),
-        tap(() => {
-          console.log('Connected')
-          setStatus('Connected')
-
-          // Повторное подтверждение (по примеру из документации)
-          handleConfirmEvent(client, {})
-            .pipe(take(1))
-            .subscribe(() => {
-              console.log('Confirmed after registration')
-
-              // Получение информации об аккаунте
-              getAccountInformation(client)
-                .pipe(
-                  take(1),
-                  tap((accountInfo) => {
-                    console.log('Account Information:', accountInfo)
-                    setAccountInfo(accountInfo) // Можно использовать в UI
-                  }),
-                  catchError((err) => {
-                    console.error('Failed to get account info:', err)
-                    return []
-                  })
-                )
-                .subscribe()
-            })
-        }),
-        catchError((error) => {
-          console.error('Connection failed:', error)
-          setStatus('Connection failed')
-          return []
-        })
-      )
-      .subscribe()
-  } catch (err) {
-    console.error('Connection error:', err)
-    setStatus('Connection error')
-  }
-}
+  return (
+    <div style={{ padding: "20px" }}>
+      <h1>Spotware Client Status</h1>
+      <p><strong>Status:</strong> {connected ? "Connected" : "Not connected"}</p>
+      <div style={{ marginTop: "20px" }}>
+        {logs.map((log, index) => (
+          <pre key={index} style={{ background: "#f4f4f4", padding: "10px", borderRadius: "4px", marginBottom: "10px" }}>
+            {log}
+          </pre>
+        ))}
+      </div>
+    </div>
+  );
+};
