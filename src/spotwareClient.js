@@ -1,6 +1,5 @@
 import { createClientAdapter, IExternalTransportAdapter } from '@spotware-web-team/external-api'
 import { registerEvent, handleConfirmEvent } from '@spotware-web-team/sdk'
-import { createLogger } from '@veksa/logger'
 import { take, tap, catchError } from 'rxjs'
 
 let client = null
