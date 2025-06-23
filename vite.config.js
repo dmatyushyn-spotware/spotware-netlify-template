@@ -5,7 +5,7 @@ export default defineConfig({
   plugins: [react()],
   build: {
     rollupOptions: {
-      external: ['@spotware/external-api']
+      external: ['@spotware-web-team/external-api']
     }
   }
 });
