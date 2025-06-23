@@ -1,48 +1,36 @@
-import { createClientAdapter } from '@spotware-web-team/sdk-external-api';
-import { confirmEvent, registerEvent } from '@spotware-web-team/sdk';
-import { mergeMap, tap, catchError } from 'rxjs';
+import { createClientAdapter } from '@spotware-web-team/sdk-external-api'
+import { registerEvent, handleConfirmEvent } from '@spotware-web-team/sdk'
+import { take, tap, catchError } from 'rxjs'
+import {createLogger} from '@veksa/logger';
 
-let client = null;
+let client = null
 
 export const connect = async (setStatus = () => {}) => {
+  const logger = createLogger(true)
+  client = createClientAdapter({ logger })
+
   try {
-    client = createClientAdapter();
-    if (!client) {
-      console.error('Client creation failed');
-      setStatus('Client creation failed');
-      return;
-    }
-
-    console.log('Client created:', client);
-
-    confirmEvent(client)
-      .pipe(
-        mergeMap(() => []), // либо tap(() => { ... }) если нужна логика
-        catchError((err) => {
-          console.error('Confirm event failed:', err);
-          setStatus('Confirm event failed');
-          return [];
-        })
-      )
-      .subscribe();
+    handleConfirmEvent(client, {})
+      .pipe(take(1))
+      .subscribe()
 
     registerEvent(client)
       .pipe(
-        mergeMap(() => []),
+        take(1),
         tap(() => {
-          console.log('Connected');
-          setStatus('Connected');
+          handleConfirmEvent(client, {}).pipe(take(1)).subscribe()
+          console.log('Connected')
+          setStatus('Connected')
         }),
-        catchError((err) => {
-          console.error('Register event failed:', err);
-          setStatus('Register event failed');
-          return [];
+        catchError((error) => {
+          console.error('Connection failed:', error)
+          setStatus('Connection failed')
+          return []
         })
       )
-      .subscribe();
-
+      .subscribe()
   } catch (err) {
-    console.error('Connection error:', err);
-    setStatus('Connection error');
+    console.error('Connection error:', err)
+    setStatus('Connection error')
   }
-};
+}
