@@ -1,11 +1,11 @@
-import SpotwareClient from "@spotware-web-team/sdk";
+import { SpotwareClientAdapter } from "@spotware-web-team/sdk";
 
 export function initClient(onStatus) {
-  const client = new SpotwareClient();
+  const client = new SpotwareClientAdapter();
 
   client.onConnectionStatusChange((status) => {
     onStatus?.(status);
   });
 
-  client.connect(); // или другой метод, зависит от API
+  client.connect(); // или другой метод, см. SDK
 }
