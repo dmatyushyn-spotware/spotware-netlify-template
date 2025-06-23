@@ -1,0 +1,20 @@
+{
+  "name": "spotware-netlify-template",
+  "version": "1.0.0",
+  "description": "Spotware SDK sample for deployment on Netlify",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@spotware-web-team/sdk": "^1.0.0",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0"
+  },
+  "devDependencies": {
+    "vite": "^4.0.0",
+    "@vitejs/plugin-react": "^4.0.0"
+  }
+}
