@@ -1,4 +1,4 @@
-import { createClientAdapter } from "@spotware-web-team/sdk";
+import { createClientAdapter } from "@spotware-web-team/sdk-external-api";
 
 export function initClient(onStatus) {
   const client = createClientAdapter();
