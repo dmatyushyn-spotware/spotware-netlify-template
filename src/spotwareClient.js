@@ -1,12 +1,12 @@
-import { createClientAdapter } from "@spotware-web-team/sdk-external-api";
+import { SpotwareClient } from '@spotware-web-team/sdk'
 
-export function initClient(onStatus) {
-  const client = createClientAdapter();
+const client = new SpotwareClient()
 
-  client.onConnect = () => onStatus("✅ Connected");
-  client.onError = (err) => onStatus(`❌ Error: ${err.message || err}`);
-
-  client.connect();
-  return client;
+const connect = async () => {
+  try {
+    await client.connect()
+    console.log('Connected')
+  } catch (err) {
+    console.error('Connection failed:', err)
+  }
 }
-
