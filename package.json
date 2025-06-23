@@ -7,14 +7,14 @@
   "engines": {
     "node": ">=18.0.0"
   },
-  "main": "./dist/index.cjs", // CommonJS
+  "main": "./dist/index.cjs",
   "types": "./dist/index.d.ts",
   "exports": {
     "./package.json": "./package.json",
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",   // for ESM
-      "require": "./dist/index.cjs"   // for CJS
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
     }
   },
   "files": [
