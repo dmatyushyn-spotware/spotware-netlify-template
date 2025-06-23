@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@spotware-web-team/sdk": "^1.0.0",
+    "@spotware-web-team/sdk": "0.0.5",
     "react": "^18.0.0",
     "react-dom": "^18.0.0"
   },
