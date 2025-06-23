@@ -1,44 +1,48 @@
-import { createClientAdapter } from '@spotware-web-team/sdk-external-api'
-import { registerEvent, handleConfirmEvent } from '@spotware-web-team/sdk'
-import { take, tap, catchError, of } from 'rxjs'
+import { createClientAdapter } from '@spotware-web-team/sdk-external-api';
+import { confirmEvent, registerEvent } from '@spotware-web-team/sdk';
+import { mergeMap, tap, catchError } from 'rxjs';
 
-let client = null
+let client = null;
 
 export const connect = async (setStatus = () => {}) => {
-  client = createClientAdapter({})
+  try {
+    client = createClientAdapter();
+    if (!client) {
+      console.error('Client creation failed');
+      setStatus('Client creation failed');
+      return;
+    }
 
-  if (!client) {
-    console.error("Client initialization failed")
-    setStatus('Initialization error')
-    return
-  }
+    console.log('Client created:', client);
 
-  const confirm$ = handleConfirmEvent(client, {})
-  if (confirm$?.subscribe) {
-    confirm$.pipe(take(1)).subscribe()
-  } else {
-    console.error("handleConfirmEvent returned undefined")
-  }
-
-  const event$ = registerEvent(client)
-  if (event$?.subscribe) {
-    event$
+    confirmEvent(client)
       .pipe(
-        take(1),
-        tap(() => {
-          handleConfirmEvent(client, {}).pipe(take(1)).subscribe()
-          console.log('Connected')
-          setStatus('Connected')
-        }),
-        catchError((error) => {
-          console.error('Connection failed:', error)
-          setStatus('Connection failed')
-          return of()
+        mergeMap(() => []), // либо tap(() => { ... }) если нужна логика
+        catchError((err) => {
+          console.error('Confirm event failed:', err);
+          setStatus('Confirm event failed');
+          return [];
         })
       )
-      .subscribe()
-  } else {
-    console.error("registerEvent returned undefined")
-    setStatus('Registration error')
+      .subscribe();
+
+    registerEvent(client)
+      .pipe(
+        mergeMap(() => []),
+        tap(() => {
+          console.log('Connected');
+          setStatus('Connected');
+        }),
+        catchError((err) => {
+          console.error('Register event failed:', err);
+          setStatus('Register event failed');
+          return [];
+        })
+      )
+      .subscribe();
+
+  } catch (err) {
+    console.error('Connection error:', err);
+    setStatus('Connection error');
   }
-}
+};
