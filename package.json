@@ -10,14 +10,12 @@
   },
   "dependencies": {
     "@spotware-web-team/sdk": "^0.0.5",
+    "@spotware-web-team/sdk-external-api": "^0.0.1",
     "react": "^18.0.0",
     "react-dom": "^18.0.0"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.0.0",
-    "vite": "^4.0.0"
-  },
-  "engines": {
-    "node": ">=22.13.0"
+    "vite": "^4.5.0"
   }
 }
