@@ -1,11 +1,12 @@
-import { SpotwareClientAdapter } from "@spotware-web-team/sdk";
+import { createClientAdapter } from "@spotware-web-team/sdk";
 
 export function initClient(onStatus) {
-  const client = new SpotwareClientAdapter();
+  const client = createClientAdapter();
 
-  client.onConnectionStatusChange((status) => {
-    onStatus?.(status);
-  });
+  client.onConnect = () => onStatus("✅ Connected");
+  client.onError = (err) => onStatus(`❌ Error: ${err.message || err}`);
 
-  client.connect(); // или другой метод, см. SDK
+  client.connect();
+  return client;
 }
+
