@@ -1,13 +1,12 @@
 import { createClientAdapter, IExternalTransportAdapter } from '@spotware-web-team/sdk-external-api'
 import { registerEvent, handleConfirmEvent } from '@spotware-web-team/sdk'
 import { take, tap, catchError } from 'rxjs'
-import { createLogger } from '@veksa/logger'
 
 let client = null
 
 export const connect = async (setStatus = () => {}) => {
-  const logger = createLogger(true)
-  client = createClientAdapter({ logger })
+  // Просто создаем adapter без логгера
+  client = createClientAdapter({})
 
   try {
     handleConfirmEvent(client, {})
