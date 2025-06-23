@@ -1,19 +1,28 @@
-import { createClientAdapter, IExternalTransportAdapter } from '@spotware-web-team/sdk-external-api'
+import { createClientAdapter } from '@spotware-web-team/sdk-external-api'
 import { registerEvent, handleConfirmEvent } from '@spotware-web-team/sdk'
-import { take, tap, catchError } from 'rxjs'
+import { take, tap, catchError, of } from 'rxjs'
 
 let client = null
 
 export const connect = async (setStatus = () => {}) => {
-  // Просто создаем adapter без логгера
   client = createClientAdapter({})
 
-  try {
-    handleConfirmEvent(client, {})
-      .pipe(take(1))
-      .subscribe()
+  if (!client) {
+    console.error("Client initialization failed")
+    setStatus('Initialization error')
+    return
+  }
 
-    registerEvent(client)
+  const confirm$ = handleConfirmEvent(client, {})
+  if (confirm$?.subscribe) {
+    confirm$.pipe(take(1)).subscribe()
+  } else {
+    console.error("handleConfirmEvent returned undefined")
+  }
+
+  const event$ = registerEvent(client)
+  if (event$?.subscribe) {
+    event$
       .pipe(
         take(1),
         tap(() => {
@@ -24,12 +33,12 @@ export const connect = async (setStatus = () => {}) => {
         catchError((error) => {
           console.error('Connection failed:', error)
           setStatus('Connection failed')
-          return []
+          return of()
         })
       )
       .subscribe()
-  } catch (err) {
-    console.error('Connection error:', err)
-    setStatus('Connection error')
+  } else {
+    console.error("registerEvent returned undefined")
+    setStatus('Registration error')
   }
 }
