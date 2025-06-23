@@ -14,7 +14,7 @@
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
     "rxjs": "^7.8.1",
-    "@veksa/logger": "0.0.1"
+    "@veksa/logger": "0.0.3"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.0.0",
