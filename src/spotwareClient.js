@@ -2,7 +2,7 @@ import { createClientAdapter } from '@spotware-web-team/sdk-external-api'
 import {
   registerEvent,
   handleConfirmEvent,
-  getAccountInformation,
+  getAccountInformation
 } from '@spotware-web-team/sdk'
 import { take, tap, catchError } from 'rxjs'
 import { createLogger } from '@veksa/logger'
@@ -14,42 +14,52 @@ export const connect = async (setStatus = () => {}, setAccountInfo = () => {}) =
   client = createClientAdapter({ logger })
 
   try {
+    // Подтверждение соединения с хостом
     handleConfirmEvent(client, {})
       .pipe(take(1))
-      .subscribe()
+      .subscribe(() => {
+        console.log('Confirmed with host')
+      })
 
+    // Регистрация клиента
     registerEvent(client)
       .pipe(
         take(1),
         tap(() => {
-          handleConfirmEvent(client, {}).pipe(take(1)).subscribe()
-
-          getAccountInformation(client)
-            .pipe(
-              take(1),
-              tap((accountInfo) => {
-                logger.log('Account info:', accountInfo)
-                setAccountInfo(accountInfo) // если передали сеттер, сохранить
-              }),
-              catchError((err) => {
-                logger.error('Failed to get account info:', err)
-                return []
-              })
-            )
-            .subscribe()
-
-          logger.log('Connected')
+          console.log('Connected')
           setStatus('Connected')
+
+          // Повторное подтверждение (по примеру из документации)
+          handleConfirmEvent(client, {})
+            .pipe(take(1))
+            .subscribe(() => {
+              console.log('Confirmed after registration')
+
+              // Получение информации об аккаунте
+              getAccountInformation(client)
+                .pipe(
+                  take(1),
+                  tap((accountInfo) => {
+                    console.log('Account Information:', accountInfo)
+                    setAccountInfo(accountInfo) // Можно использовать в UI
+                  }),
+                  catchError((err) => {
+                    console.error('Failed to get account info:', err)
+                    return []
+                  })
+                )
+                .subscribe()
+            })
         }),
         catchError((error) => {
-          logger.error('Connection failed:', error)
+          console.error('Connection failed:', error)
           setStatus('Connection failed')
           return []
         })
       )
       .subscribe()
   } catch (err) {
-    logger.error('Connection error:', err)
+    console.error('Connection error:', err)
     setStatus('Connection error')
   }
 }
