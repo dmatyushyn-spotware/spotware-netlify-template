@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { createClientAdapter } from "@spotware-web-team/sdk-external-api";
-import { handleConfirmEvent, registerEvent, getAccountInformation } from "@spotware-web-team/sdk";
+import {
+  handleConfirmEvent,
+  registerEvent,
+  getAccountInformation,
+} from "@spotware-web-team/sdk";
 import { createLogger } from "@veksa/logger";
 import { take, tap, catchError } from "rxjs";
 
@@ -33,9 +37,14 @@ export const useSpotwareClient = () => {
 
           setConnected(true);
           pushLog("✅ Connected to Spotware");
+
+          // 🧪 Подписка на ВСЕ входящие сообщения (отладка)
+          adapter.current.incoming$.subscribe((rawMessage) => {
+            pushLog(`📥 RAW INCOMING:\n${JSON.stringify(rawMessage, null, 2)}`);
+          });
         }),
         catchError((err) => {
-          pushLog(`❌ Connection failed: ${err.message || String(err)}`);
+          pushLog(`❌ Connection failed: ${err?.message || String(err)}`);
           return [];
         })
       )
@@ -44,40 +53,29 @@ export const useSpotwareClient = () => {
 
   const getAccountInfo = useCallback(() => {
     if (!adapter.current) {
-      setLogs((prev) => [...prev, "⚠️ Not connected"]);
+      pushLog("⚠️ Not connected");
       return;
     }
 
-    setLogs((prev) => [...prev, "📡 Fetching account info..."]);
+    pushLog("📡 Fetching account info...");
 
     getAccountInformation(adapter.current, {})
       .pipe(
         take(1),
         tap((result) => {
-          const type = typeof result;
-          const raw = String(result);
-
-          setLogs((prevLogs) => [
-            ...prevLogs,
-            `📘 typeof result: ${type}`,
-            `📘 raw result: ${raw}`,
-            `📘 result dump: ${JSON.stringify(result, null, 2)}`
-          ]);
+          pushLog(`📘 Account Info:\n${JSON.stringify(result, null, 2)}`);
         }),
         catchError((err) => {
-          setLogs((prev) => [
-            ...prev,
-            `❌ Account fetch failed.`,
-            `🔍 typeof err: ${typeof err}`,
-            `🔍 err (stringified): ${JSON.stringify(err)}`,
-            `🔍 err as string: ${String(err)}`,
-            `🔍 err.message: ${err?.message}`
-          ]);
+          pushLog("❌ Account fetch failed.");
+          pushLog(`🔍 typeof err: ${typeof err}`);
+          pushLog(`🔍 err (stringified): ${JSON.stringify(err)}`);
+          pushLog(`🔍 err as string: ${String(err)}`);
+          pushLog(`🔍 err.message: ${err?.message}`);
           return [];
         })
       )
       .subscribe();
-  }, []);
+  }, [pushLog]);
 
   return { connected, logs, getAccountInfo };
 };
