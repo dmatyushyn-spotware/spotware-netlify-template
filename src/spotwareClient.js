@@ -1,58 +1,67 @@
-import { createClientAdapter } from '@spotware-web-team/sdk-external-api';
-import { registerEvent, handleConfirmEvent, getAccountInformation } from '@spotware-web-team/sdk';
-import { take, tap, catchError } from 'rxjs';
-import { createLogger } from '@veksa/logger';
+import { useEffect, useRef, useState, useCallback } from "react";
+import { createClientAdapter } from "@spotware-web-team/sdk-external-api";
+import { handleConfirmEvent, registerEvent, getAccountInformation } from "@spotware-web-team/sdk";
+import { createLogger } from "@veksa/logger";
+import { take, tap, catchError } from "rxjs";
 
-let client = null;
+export const useSpotwareClient = () => {
+  const adapter = useRef(null);
+  const [connected, setConnected] = useState(false);
+  const [logs, setLogs] = useState([]);
 
-export const connect = async (setStatus, pushLog = () => {}) => {
-  const logger = createLogger(true);
-  client = createClientAdapter({ logger });
+  const pushLog = useCallback((msg) => {
+    setLogs((prev) => [...prev, msg]);
+  }, []);
 
-  setStatus('Connecting...');
-  pushLog('⚡ Connecting to Spotware...');
+  useEffect(() => {
+    const logger = createLogger(true);
+    adapter.current = createClientAdapter({ logger });
 
-  try {
-    handleConfirmEvent(client, {}).pipe(take(1)).subscribe();
+    pushLog("🔌 Connecting to Spotware...");
 
-    registerEvent(client)
+    handleConfirmEvent(adapter.current, {})
+      .pipe(take(1))
+      .subscribe();
+
+    registerEvent(adapter.current)
       .pipe(
         take(1),
         tap(() => {
-          handleConfirmEvent(client, {}).pipe(take(1)).subscribe();
-          setStatus('Connected');
-          pushLog('✅ Connected to Spotware');
+          handleConfirmEvent(adapter.current, {})
+            .pipe(take(1))
+            .subscribe();
+
+          setConnected(true);
+          pushLog("✅ Connected to Spotware");
         }),
         catchError((err) => {
-          setStatus('Connection failed');
           pushLog(`❌ Connection failed: ${err.message}`);
           return [];
         })
       )
       .subscribe();
-  } catch (err) {
-    setStatus('Connection error');
-    pushLog(`❌ Connection error: ${err.message}`);
-  }
-};
+  }, [pushLog]);
 
-export const fetchAccountInfo = async (pushLog = () => {}) => {
-  if (!client) {
-    pushLog('⚠️ Not connected');
-    return;
-  }
+  const getAccountInfo = useCallback(() => {
+    if (!adapter.current) {
+      pushLog("⚠️ Not connected");
+      return;
+    }
 
-  pushLog('📡 Requesting account info...');
-  getAccountInformation(client, {})
-    .pipe(
-      take(1),
-      tap((info) => {
-        pushLog(`📘 Account Info:\n${JSON.stringify(info, null, 2)}`);
-      }),
-      catchError((err) => {
-        pushLog(`❌ Failed to fetch account info: ${err.message}`);
-        return [];
-      })
-    )
-    .subscribe();
+    pushLog("📡 Fetching account info...");
+    getAccountInformation(adapter.current, {})
+      .pipe(
+        take(1),
+        tap((result) => {
+          pushLog(`📘 Account Info:\n${JSON.stringify(result, null, 2)}`);
+        }),
+        catchError((err) => {
+          pushLog(`❌ Account fetch failed: ${err.message}`);
+          return [];
+        })
+      )
+      .subscribe();
+  }, [pushLog]);
+
+  return { connected, logs, getAccountInfo };
 };
