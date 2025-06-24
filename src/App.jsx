@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react"
 import {
-  connect,
+  initClient,
   fetchAccountInfo,
   setLogger
 } from "./spotwareClient"
@@ -11,9 +11,17 @@ export default function App() {
   const [logs, setLogs] = useState([])
 
   useEffect(() => {
-    // Подключаем вывод логов на экран
+    // Получаем логи из клиента
     setLogger((msg) => setLogs((prev) => [...prev, msg]))
   }, [])
+
+  const handleConnect = () => {
+    setStatus("Connecting...")
+    initClient(
+      () => setStatus("Connected"),
+      () => setStatus("Connection failed")
+    )
+  }
 
   return (
     <div style={{ fontFamily: "Arial", maxWidth: 600, margin: "40px auto" }}>
@@ -21,7 +29,7 @@ export default function App() {
       <p><strong>Status:</strong> {status}</p>
 
       <div style={{ display: "flex", gap: "10px", marginBottom: 10 }}>
-        <button onClick={() => connect(setStatus)} disabled={status === "Connected"}>
+        <button onClick={handleConnect} disabled={status === "Connected" || status === "Connecting..."}>
           Connect to Spotware
         </button>
 
