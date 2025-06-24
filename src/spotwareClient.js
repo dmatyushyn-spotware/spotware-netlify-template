@@ -67,7 +67,11 @@ export const useSpotwareClient = () => {
         catchError((err) => {
           setLogs((prev) => [
             ...prev,
-            `❌ Account fetch failed: ${err?.message || String(err)}`
+            `❌ Account fetch failed.`,
+            `🔍 typeof err: ${typeof err}`,
+            `🔍 err (stringified): ${JSON.stringify(err)}`,
+            `🔍 err as string: ${String(err)}`,
+            `🔍 err.message: ${err?.message}`
           ]);
           return [];
         })
