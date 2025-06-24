@@ -54,34 +54,18 @@ export const useSpotwareClient = () => {
 
     pushLog("📡 Fetching account info...");
 
-    getAccountInformation(adapter.current)
+    getAccountInformation(adapter.current, {}) // <-- ВАЖНО: пустой объект
       .pipe(
         take(1),
         tap((result) => {
-          console.log("💡 Raw result from getAccountInformation:", result);
-
-          if (result) {
-            const msg = typeof result === "object"
-              ? result?.toString?.() || JSON.stringify(result, null, 2)
-              : String(result);
-            pushLog(`📘 Account Info:\n${msg}`);
-          } else {
-            pushLog("⚠️ Account info result is empty or undefined.");
-          }
+          pushLog(`📘 Account Info:\n${JSON.stringify(result, null, 2)}`);
         }),
         catchError((err) => {
-          const errText = typeof err === "object"
-            ? err?.message || err?.toString?.() || JSON.stringify(err)
-            : String(err);
-          pushLog(`❌ Account fetch failed: ${errText}`);
+          pushLog(`❌ Account fetch failed: ${err?.message || err}`);
           return [];
         })
       )
-      .subscribe({
-        complete: () => {
-          pushLog("✅ Account info request completed.");
-        }
-      });
+      .subscribe();
   }, [pushLog]);
 
   return { connected, logs, getAccountInfo };
