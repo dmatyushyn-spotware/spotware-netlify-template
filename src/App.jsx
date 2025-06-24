@@ -1,40 +1,57 @@
-import React, { useState } from "react"
-import { connect, fetchAccountInfo } from "./spotwareClient"
+import React, { useState, useEffect } from "react"
+import {
+  connect,
+  fetchAccountInfo,
+  setLogger
+} from "./spotwareClient"
 
 export default function App() {
   const [status, setStatus] = useState("Not connected")
   const [accounts, setAccounts] = useState([])
+  const [logs, setLogs] = useState([])
+
+  useEffect(() => {
+    // Подключаем вывод логов на экран
+    setLogger((msg) => setLogs((prev) => [...prev, msg]))
+  }, [])
 
   return (
-    <div style={{ fontFamily: "Arial, sans-serif", maxWidth: 600, margin: "40px auto" }}>
+    <div style={{ fontFamily: "Arial", maxWidth: 600, margin: "40px auto" }}>
       <h1>Spotware Client Status</h1>
       <p><strong>Status:</strong> {status}</p>
 
-      <button
-        onClick={() => connect(setStatus)}
-        style={{ padding: "10px 20px", cursor: "pointer", marginBottom: 10 }}
-      >
-        Connect to Spotware
-      </button>
+      <div style={{ display: "flex", gap: "10px", marginBottom: 10 }}>
+        <button onClick={() => connect(setStatus)} disabled={status === "Connected"}>
+          Connect to Spotware
+        </button>
 
-      {status === "Connected" && (
-        <button
-          onClick={() => fetchAccountInfo(setAccounts)}
-          style={{ padding: "10px 20px", cursor: "pointer", marginLeft: 10 }}
-        >
+        <button onClick={() => fetchAccountInfo(setAccounts)} disabled={status !== "Connected"}>
           Get Account Info
         </button>
-      )}
+      </div>
+
+      <div style={{
+        background: "#f9f9f9",
+        border: "1px solid #ddd",
+        padding: 10,
+        borderRadius: 4,
+        maxHeight: 200,
+        overflowY: "auto",
+        fontSize: 12,
+        marginBottom: 20
+      }}>
+        {logs.map((log, i) => (
+          <div key={i}>{log}</div>
+        ))}
+      </div>
 
       {accounts.length > 0 && (
-        <div style={{ marginTop: 20 }}>
+        <div>
           <h3>Accounts:</h3>
           <ul>
             {accounts.map((acc, idx) => (
               <li key={idx}>
-                <strong>ID:</strong> {acc.ctidTraderAccountId} —
-                <strong> Balance:</strong> {acc.balance} —
-                <strong> Currency:</strong> {acc.currency}
+                ID: {acc.ctidTraderAccountId}, Balance: {acc.balance}, Currency: {acc.currency}
               </li>
             ))}
           </ul>
