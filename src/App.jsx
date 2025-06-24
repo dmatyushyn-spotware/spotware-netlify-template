@@ -20,10 +20,13 @@ export default function App() {
           borderRadius: 5,
           maxHeight: 400,
           overflowY: "auto",
+          whiteSpace: "pre-wrap",
         }}
       >
         {logs.map((log, i) => (
-          <pre key={i} style={{ marginBottom: 10 }}>{log}</pre>
+          <pre key={i} style={{ marginBottom: 10 }}>
+            {log}
+          </pre>
         ))}
       </div>
     </div>
