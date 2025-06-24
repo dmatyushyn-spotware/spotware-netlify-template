@@ -1,48 +1,32 @@
-// src/App.jsx
-import React, { useState } from "react"
-import { initClient, fetchAccountInfo } from "./spotwareClient"
+import React, { useState } from 'react'
+import { connect, getAccountInfo } from './spotwareClient'
 
 export default function App() {
   const [logs, setLogs] = useState([])
-  const [status, setStatus] = useState("Disconnected")
+  const [status, setStatus] = useState('Disconnected')
 
-  const pushLog = (message) => {
-    setLogs(prevLogs => [message, ...prevLogs])
-  }
-
-  const handleConnect = () => {
-    initClient(pushLog, setStatus)
-  }
-
-  const handleFetchAccount = () => {
-    fetchAccountInfo(pushLog)
+  const pushLog = (msg) => {
+    setLogs(prev => [msg, ...prev])
   }
 
   return (
-    <div style={{ padding: "20px", fontFamily: "Arial" }}>
+    <div style={{ padding: 20 }}>
       <h2>Spotware SDK Demo</h2>
-      <p>Status: <strong>{status}</strong></p>
+      <p>Status: <b>{status}</b></p>
 
-      <div style={{ display: "flex", gap: "10px", marginBottom: "20px" }}>
-        <button onClick={handleConnect}>🔌 Connect</button>
-        <button onClick={handleFetchAccount} disabled={status !== "Connected"}>
+      <div style={{ marginBottom: 10 }}>
+        <button onClick={() => connect(setStatus, pushLog)}>🔌 Connect</button>
+        <button onClick={() => getAccountInfo(pushLog)} disabled={status !== 'Connected'}>
           📘 Get Account Info
         </button>
       </div>
 
       <div style={{
-        background: "#111",
-        color: "#0f0",
-        padding: "10px",
-        height: "300px",
-        overflowY: "auto",
-        border: "1px solid #444"
+        background: '#111', color: '#0f0',
+        padding: 10, minHeight: 200, maxHeight: 300,
+        overflowY: 'auto', whiteSpace: 'pre-wrap'
       }}>
-        {logs.map((log, i) => (
-          <div key={i} style={{ marginBottom: "8px", whiteSpace: "pre-wrap" }}>
-            {log}
-          </div>
-        ))}
+        {logs.map((l, i) => <div key={i}>{l}</div>)}
       </div>
     </div>
   )
