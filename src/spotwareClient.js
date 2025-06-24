@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { createClientAdapter } from "@spotware-web-team/sdk-external-api";
-import { handleConfirmEvent, registerEvent, getAccountInformation } from "@spotware-web-team/sdk";
+import {
+  handleConfirmEvent,
+  registerEvent,
+  getAccountInformation
+} from "@spotware-web-team/sdk";
 import { createLogger } from "@veksa/logger";
 import { take, tap, catchError } from "rxjs";
 
@@ -27,17 +31,15 @@ export const useSpotwareClient = () => {
       .pipe(
         take(1),
         tap(() => {
-          handleConfirmEvent(adapter.current, {}).pipe(take(1)).subscribe();
+          handleConfirmEvent(adapter.current, {})
+            .pipe(take(1))
+            .subscribe();
 
           setConnected(true);
           pushLog("✅ Connected to Spotware");
         }),
         catchError((err) => {
-          const errText = typeof err === "object"
-            ? err?.message || err?.toString?.() || JSON.stringify(err)
-            : String(err);
-
-          pushLog(`❌ Connection failed: ${errText}`);
+          pushLog(`❌ Connection failed: ${err.message}`);
           return [];
         })
       )
@@ -56,22 +58,30 @@ export const useSpotwareClient = () => {
       .pipe(
         take(1),
         tap((result) => {
-          const message = typeof result === "object"
-            ? result?.toString?.() || JSON.stringify(result)
-            : String(result);
+          console.log("💡 Raw result from getAccountInformation:", result);
 
-          pushLog(`📘 Account Info:\n${message}`);
+          if (result) {
+            const msg = typeof result === "object"
+              ? result?.toString?.() || JSON.stringify(result, null, 2)
+              : String(result);
+            pushLog(`📘 Account Info:\n${msg}`);
+          } else {
+            pushLog("⚠️ Account info result is empty or undefined.");
+          }
         }),
         catchError((err) => {
           const errText = typeof err === "object"
             ? err?.message || err?.toString?.() || JSON.stringify(err)
             : String(err);
-
           pushLog(`❌ Account fetch failed: ${errText}`);
           return [];
         })
       )
-      .subscribe();
+      .subscribe({
+        complete: () => {
+          pushLog("✅ Account info request completed.");
+        }
+      });
   }, [pushLog]);
 
   return { connected, logs, getAccountInfo };
