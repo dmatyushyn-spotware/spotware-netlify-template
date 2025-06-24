@@ -5,45 +5,44 @@ import { createLogger } from '@veksa/logger';
 
 let client = null;
 
-export const connect = async (setStatus = () => {}, pushLog = () => {}) => {
+export const connect = async (setStatus, pushLog = () => {}) => {
   const logger = createLogger(true);
   client = createClientAdapter({ logger });
 
+  setStatus('Connecting...');
+  pushLog('⚡ Connecting to Spotware...');
+
   try {
-    handleConfirmEvent(client, {})
-      .pipe(take(1))
-      .subscribe();
+    handleConfirmEvent(client, {}).pipe(take(1)).subscribe();
 
     registerEvent(client)
       .pipe(
         take(1),
         tap(() => {
           handleConfirmEvent(client, {}).pipe(take(1)).subscribe();
-          console.log('Connected');
           setStatus('Connected');
           pushLog('✅ Connected to Spotware');
         }),
-        catchError((error) => {
-          console.error('Connection failed:', error);
+        catchError((err) => {
           setStatus('Connection failed');
-          pushLog('❌ Connection failed');
+          pushLog(`❌ Connection failed: ${err.message}`);
           return [];
         })
       )
       .subscribe();
   } catch (err) {
-    console.error('Connection error:', err);
     setStatus('Connection error');
-    pushLog('❌ Connection error');
+    pushLog(`❌ Connection error: ${err.message}`);
   }
 };
 
-export const fetchAccountInfo = (pushLog = () => {}) => {
+export const fetchAccountInfo = async (pushLog = () => {}) => {
   if (!client) {
     pushLog('⚠️ Not connected');
     return;
   }
 
+  pushLog('📡 Requesting account info...');
   getAccountInformation(client, {})
     .pipe(
       take(1),
