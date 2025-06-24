@@ -1,77 +1,68 @@
-import { createClientAdapter } from '@spotware-web-team/sdk-external-api'
 import {
-  handleConfirmEvent,
   registerEvent,
+  handleConfirmEvent,
   getAccountInformation
-} from '@spotware-web-team/sdk'
-import { catchError, take, tap, mergeMap } from 'rxjs'
-import { createLogger } from '@veksa/logger'
+} from '@spotware-web-team/sdk';
+import { createClientAdapter } from '@spotware-web-team/external-api';
+import { createLogger } from '@veksa/logger';
+import { take, tap, catchError } from 'rxjs';
 
-let client = null
-let isConnected = false
-let logCallback = null
+let adapter = null;
 
-export const setLogger = (cb) => {
-  logCallback = cb
-}
+export const logs = [];
 
-const log = (msg) => {
-  console.log(msg)
-  if (typeof logCallback === 'function') {
-    logCallback(msg)
-  }
-}
+export function connect(setStatus, setConnected, pushLog) {
+  const logger = createLogger(true);
+  adapter = createClientAdapter({ logger });
 
-export const initClient = (onConnected = () => {}, onError = () => {}) => {
-  const logger = createLogger(true)
-  client = createClientAdapter({ logger })
+  setStatus('Connecting...');
+  pushLog('⚡ Connecting to Spotware...');
 
-  log("🛰 Connecting to Spotware...")
+  handleConfirmEvent(adapter, {})
+    .pipe(take(1))
+    .subscribe(event => {
+      pushLog(`✅ Confirm Event Received: ${JSON.stringify(event)}`);
+    });
 
-  handleConfirmEvent(client, {}).pipe(take(1)).subscribe()
-
-  registerEvent(client)
-    .pipe(
-      tap((event) => {
-        log("📥 Incoming event: " + JSON.stringify(event, null, 2))
-
-        // 2043 = ProtoOAClientSessionEvent
-        if (event.payloadType === 2043) {
-          log("✅ Session established (2043)")
-          isConnected = true
-          onConnected()
-        }
-      }),
-      catchError((error) => {
-        log("❌ Connection failed: " + error.message)
-        onError(error)
-        return []
-      })
-    )
-    .subscribe()
-}
-
-export const fetchAccountInfo = async (setAccounts = () => {}) => {
-  if (!client || !isConnected) {
-    log("❌ Client not connected")
-    return
-  }
-
-  log("📡 Requesting account information...")
-
-  getAccountInformation(client, {})
+  registerEvent(adapter)
     .pipe(
       take(1),
-      mergeMap((res) => {
-        const accounts = res?.payload?.payload?.accounts || []
-        log("📦 Account info received")
-        setAccounts(accounts)
-        return []
+      tap(() => {
+        handleConfirmEvent(adapter, {})
+          .pipe(take(1))
+          .subscribe(event => {
+            pushLog(`✅ Second Confirm: ${JSON.stringify(event)}`);
+          });
+
+        setConnected(true);
+        setStatus('Connected');
+        pushLog('🎉 Connected to Spotware.');
       }),
-      catchError((err) => {
-        log("❌ Failed to get account info: " + err.message)
-        return []
+      catchError(() => {
+        pushLog('❌ Error during registration to Spotware.');
+        setStatus('Connection error');
+        return [];
       })
     )
-    .subscribe()
+    .subscribe();
+}
+
+export function fetchAccountInfo(pushLog) {
+  if (!adapter) {
+    pushLog('⚠️ Not connected to Spotware.');
+    return;
+  }
+
+  getAccountInformation(adapter, {})
+    .pipe(
+      take(1),
+      tap(info => {
+        pushLog(`📘 Account Info: ${JSON.stringify(info, null, 2)}`);
+      }),
+      catchError(err => {
+        pushLog(`❌ Failed to fetch account info: ${err}`);
+        return [];
+      })
+    )
+    .subscribe();
 }
