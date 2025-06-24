@@ -1,70 +1,59 @@
-import {
-  registerEvent,
-  handleConfirmEvent,
-  getAccountInformation
-} from '@spotware-web-team/sdk';
-
 import { createClientAdapter } from '@spotware-web-team/sdk-external-api';
+import { registerEvent, handleConfirmEvent, getAccountInformation } from '@spotware-web-team/sdk';
+import { take, tap, catchError } from 'rxjs';
 import { createLogger } from '@veksa/logger';
 
-import { take, tap, catchError } from 'rxjs';
+let client = null;
 
-let adapter = null;
-
-// Экспортируемая функция для подключения
-export function connect(setStatus, setConnected, pushLog) {
+export const connect = async (setStatus = () => {}, pushLog = () => {}) => {
   const logger = createLogger(true);
-  adapter = createClientAdapter({ logger });
+  client = createClientAdapter({ logger });
 
-  setStatus('Connecting...');
-  pushLog('⚡ Connecting to Spotware...');
+  try {
+    handleConfirmEvent(client, {})
+      .pipe(take(1))
+      .subscribe();
 
-  // Подтверждение клиента
-  handleConfirmEvent(adapter, {})
-    .pipe(take(1))
-    .subscribe(event => {
-      pushLog(`✅ Confirmed: ${JSON.stringify(event)}`);
-    });
+    registerEvent(client)
+      .pipe(
+        take(1),
+        tap(() => {
+          handleConfirmEvent(client, {}).pipe(take(1)).subscribe();
+          console.log('Connected');
+          setStatus('Connected');
+          pushLog('✅ Connected to Spotware');
+        }),
+        catchError((error) => {
+          console.error('Connection failed:', error);
+          setStatus('Connection failed');
+          pushLog('❌ Connection failed');
+          return [];
+        })
+      )
+      .subscribe();
+  } catch (err) {
+    console.error('Connection error:', err);
+    setStatus('Connection error');
+    pushLog('❌ Connection error');
+  }
+};
 
-  // Регистрация событий
-  registerEvent(adapter)
-    .pipe(
-      take(1),
-      tap(() => {
-        handleConfirmEvent(adapter, {}).pipe(take(1)).subscribe(event => {
-          pushLog(`📩 Session confirmed again: ${JSON.stringify(event)}`);
-        });
-
-        setConnected(true);
-        setStatus('Connected');
-        pushLog('🎉 Connected to Spotware.');
-      }),
-      catchError(err => {
-        pushLog(`❌ Registration failed: ${err.message}`);
-        setStatus('Connection error');
-        return [];
-      })
-    )
-    .subscribe();
-}
-
-// Получение информации по аккаунту
-export function fetchAccountInfo(pushLog) {
-  if (!adapter) {
-    pushLog('⚠️ Not connected. Call connect() first.');
+export const fetchAccountInfo = (pushLog = () => {}) => {
+  if (!client) {
+    pushLog('⚠️ Not connected');
     return;
   }
 
-  getAccountInformation(adapter, {})
+  getAccountInformation(client, {})
     .pipe(
       take(1),
-      tap(info => {
+      tap((info) => {
         pushLog(`📘 Account Info:\n${JSON.stringify(info, null, 2)}`);
       }),
-      catchError(err => {
+      catchError((err) => {
         pushLog(`❌ Failed to fetch account info: ${err.message}`);
         return [];
       })
     )
     .subscribe();
-}
+};
