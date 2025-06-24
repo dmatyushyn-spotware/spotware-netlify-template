@@ -1,65 +1,64 @@
-import { useEffect, useRef, useState, useCallback } from "react";
-import { createClientAdapter } from "@spotware-web-team/sdk-external-api";
-import {
-  handleConfirmEvent,
-  registerEvent,
-  getAccountInformation
-} from "@spotware-web-team/sdk";
-import { createLogger } from "@veksa/logger";
-import { take, tap } from "rxjs";
+// src/spotwareClient.js
+import { useEffect, useRef, useState, useCallback } from "react"
+import { createClientAdapter } from "@spotware-web-team/sdk-external-api"
+import { handleConfirmEvent, registerEvent, getAccountInformation } from "@spotware-web-team/sdk"
+import { createLogger } from "@veksa/logger"
+import { take, tap, catchError } from "rxjs"
 
 export const useSpotwareClient = () => {
-  const adapter = useRef(null);
-  const [connected, setConnected] = useState(false);
-  const [logs, setLogs] = useState([]);
-
-  const pushLog = useCallback((msg) => {
-    setLogs((prev) => [...prev, msg]);
-  }, []);
+  const adapter = useRef(null)
+  const [connected, setConnected] = useState(false)
+  const [logs, setLogs] = useState([])
 
   useEffect(() => {
-    const logger = createLogger(true);
-    adapter.current = createClientAdapter({ logger });
+    const logger = createLogger(true)
+    adapter.current = createClientAdapter({ logger })
 
-    pushLog("🔌 Connecting to Spotware...");
+    setLogs((prev) => [...prev, "🔌 Connecting to Spotware..."])
 
+    // Первый вызов handleConfirmEvent
     handleConfirmEvent(adapter.current, {})
       .pipe(take(1))
-      .subscribe();
+      .subscribe()
 
+    // Затем registerEvent
     registerEvent(adapter.current)
       .pipe(
         take(1),
         tap(() => {
+          // Второй вызов handleConfirmEvent
           handleConfirmEvent(adapter.current, {})
             .pipe(take(1))
-            .subscribe();
+            .subscribe()
 
-          setConnected(true);
-          pushLog("✅ Connected to Spotware");
+          setConnected(true)
+          setLogs((prev) => [...prev, "✅ Connected to Spotware"])
+        }),
+        catchError((err) => {
+          setLogs((prev) => [...prev, `❌ Connection failed: ${err?.message || String(err)}`])
+          return []
         })
       )
-      .subscribe();
-  }, [pushLog]);
+      .subscribe()
+  }, [])
 
   const getAccountInfo = useCallback(() => {
     if (!adapter.current) {
-      pushLog("⚠️ Not connected");
-      return;
+      setLogs((prev) => [...prev, "⚠️ Not connected"])
+      return
     }
 
-    pushLog("📡 Fetching account info...");
+    setLogs((prev) => [...prev, "📡 Fetching account info..."])
 
-    getAccountInformation(adapter.current, {}) // <- точно как у программиста
+    getAccountInformation(adapter.current, {})
       .pipe(
         take(1),
         tap((result) => {
-          // Прямой вывод как у программиста
-          setLogs((prevLogs) => [...prevLogs, JSON.stringify(result, null, 2)]);
+          setLogs((prevLogs) => [...prevLogs, JSON.stringify(result, null, 2)])
         })
       )
-      .subscribe();
-  }, []);
+      .subscribe()
+  }, [])
 
-  return { connected, logs, getAccountInfo };
-};
+  return { connected, logs, getAccountInfo }
+}
