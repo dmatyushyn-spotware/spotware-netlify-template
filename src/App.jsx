@@ -12,7 +12,16 @@ export default function App() {
         Get Account Info
       </button>
 
-      <div style={{ marginTop: 20, background: "#eee", padding: 10, borderRadius: 5, maxHeight: 300, overflowY: "auto" }}>
+      <div
+        style={{
+          marginTop: 20,
+          background: "#eee",
+          padding: 10,
+          borderRadius: 5,
+          maxHeight: 400,
+          overflowY: "auto",
+        }}
+      >
         {logs.map((log, i) => (
           <pre key={i} style={{ marginBottom: 10 }}>{log}</pre>
         ))}
