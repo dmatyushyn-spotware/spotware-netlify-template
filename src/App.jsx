@@ -7,7 +7,7 @@ export default function App() {
 
   return (
     <div style={{ fontFamily: "Arial, sans-serif", maxWidth: 600, margin: "40px auto" }}>
-      <h1>Spotware Client Status111</h1>
+      <h1>Spotware Client Status</h1>
       <p><strong>Status:</strong> {status}</p>
 
       <button
