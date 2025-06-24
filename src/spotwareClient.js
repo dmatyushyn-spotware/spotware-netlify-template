@@ -1,7 +1,7 @@
 import { createClientAdapter } from '@spotware-web-team/sdk-external-api'
 import { registerEvent, handleConfirmEvent } from '@spotware-web-team/sdk'
 import { take, tap, catchError } from 'rxjs'
-import {createLogger} from '@veksa/logger';
+import { createLogger } from '@veksa/logger'
 
 let client = null
 
@@ -10,15 +10,16 @@ export const connect = async (setStatus = () => {}) => {
   client = createClientAdapter({ logger })
 
   try {
+    // Подтверждение соединения
     handleConfirmEvent(client, {})
       .pipe(take(1))
       .subscribe()
 
+    // Подписка на события без take(1), чтобы не пропустить быстрое соединение
     registerEvent(client)
       .pipe(
-        take(1),
         tap(() => {
-          handleConfirmEvent(client, {}).pipe(take(1)).subscribe()
+          handleConfirmEvent(client, {}).subscribe()
           console.log('Connected')
           setStatus('Connected')
         }),
