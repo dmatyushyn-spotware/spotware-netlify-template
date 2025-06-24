@@ -54,38 +54,40 @@ export const useSpotwareClient = () => {
 
     pushLog("📰 Fetching account info...");
 
-    getAccountInformation(adapter.current, {})
+   const getAccountInfo = useCallback(() => {
+  if (!adapter.current) {
+    pushLog("⚠️ Not connected");
+    return;
+  }
+
+  pushLog("📰 Fetching account info...");
+
+  const observable = getAccountInformation(adapter.current, {});
+  pushLog(`📤 Raw observable: ${String(observable)}`);
+
+  try {
+    observable
       .pipe(
         take(1),
         tap((result) => {
-          if (!result) {
-            pushLog("⚠️ Warning: Received empty result from getAccountInformation()");
-          }
-
-          pushLog("📘 Raw result:");
-          pushLog(String(result));
-
-          try {
-            const json = JSON.stringify(result, null, 2);
-            pushLog(`📘 Account Info (JSON):\n${json}`);
-          } catch (err) {
-            pushLog("❌ JSON.stringify failed:");
-            pushLog(`🔍 typeof result: ${typeof result}`);
-            pushLog(`🔍 result (stringified): ${String(result)}`);
-            pushLog(`🔍 err.message: ${err?.message || String(err)}`);
-          }
+          pushLog(`✅ Raw result type: ${typeof result}`);
+          pushLog(`✅ Raw result stringified:\n${JSON.stringify(result, null, 2)}`);
         }),
         catchError((err) => {
           pushLog("❌ Account fetch failed.");
           pushLog(`🔍 typeof err: ${typeof err}`);
           pushLog(`🔍 err (stringified): ${JSON.stringify(err)}`);
           pushLog(`🔍 err as string: ${String(err)}`);
-          pushLog(`🔍 err.message: ${err?.message || "N/A"}`);
+          pushLog(`🔍 err.message: ${err?.message || "No message"}`);
           return [];
         })
       )
       .subscribe();
-  }, [pushLog]);
+  } catch (e) {
+    pushLog("💥 Caught sync error:");
+    pushLog(String(e));
+  }
+}, [pushLog]);
 
   return { connected, logs, getAccountInfo };
 };
