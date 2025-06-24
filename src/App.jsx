@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from "react"
 import {
   initClient,
-  fetchAccountInfo,
-  setLogger
+  fetchAccountInfo
 } from "./spotwareClient"
 
 export default function App() {
