@@ -2,8 +2,7 @@ import { createClientAdapter } from '@spotware-web-team/sdk-external-api'
 import {
   handleConfirmEvent,
   registerEvent,
-  getAccountInformation,
-  ProtoOAClientSessionEvent
+  getAccountInformation
 } from '@spotware-web-team/sdk'
 import { catchError, take, tap, mergeMap } from 'rxjs'
 import { createLogger } from '@veksa/logger'
@@ -36,8 +35,8 @@ export const initClient = (onConnected = () => {}, onError = () => {}) => {
       tap((event) => {
         log("📥 Incoming event: " + JSON.stringify(event, null, 2))
 
-        // Подтверждение успешной сессии — только при ProtoOAClientSessionEvent (2043)
-        if (event.payloadType === ProtoOAClientSessionEvent) {
+        // 2043 = ProtoOAClientSessionEvent
+        if (event.payloadType === 2043) {
           log("✅ Session established (2043)")
           isConnected = true
           onConnected()
