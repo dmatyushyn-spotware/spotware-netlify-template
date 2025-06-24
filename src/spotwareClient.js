@@ -13,8 +13,16 @@ export const useSpotwareClient = () => {
   const [connected, setConnected] = useState(false);
   const [logs, setLogs] = useState([]);
 
-  const pushLog = useCallback((msg) => {
-    setLogs((prev) => [...prev, msg]);
+  const pushLog = useCallback((msg, obj = null) => {
+    if (typeof msg === "object") {
+      setLogs((prev) => [...prev, JSON.stringify(msg, null, 2)]);
+    } else {
+      setLogs((prev) => [...prev, String(msg)]);
+    }
+
+    if (obj) {
+      setLogs((prev) => [...prev, JSON.stringify(obj, null, 2)]);
+    }
   }, []);
 
   useEffect(() => {
@@ -39,7 +47,8 @@ export const useSpotwareClient = () => {
           pushLog("✅ Connected to Spotware");
         }),
         catchError((err) => {
-          pushLog(`❌ Connection failed: ${err?.message || String(err)}`);
+          pushLog("❌ Connection failed:");
+          pushLog(err?.message || String(err));
           return [];
         })
       )
@@ -54,29 +63,25 @@ export const useSpotwareClient = () => {
 
     pushLog("📰 Fetching account info...");
 
-    const observable = getAccountInformation(adapter.current, {});
-    pushLog(`📤 Raw observable: ${String(observable)}`);
-
     try {
-      observable
+      getAccountInformation(adapter.current, {})
         .pipe(
           take(1),
           tap((result) => {
-            pushLog(`✅ Raw result type: ${typeof result}`);
-            pushLog(`✅ Raw result stringified:\n${JSON.stringify(result, null, 2)}`);
+            pushLog("✅ Result received:");
+            pushLog(result);
           }),
           catchError((err) => {
             pushLog("❌ Account fetch failed.");
-            pushLog(`🔍 typeof err: ${typeof err}`);
-            pushLog(`🔍 err (stringified): ${JSON.stringify(err)}`);
-            pushLog(`🔍 err as string: ${String(err)}`);
-            pushLog(`🔍 err.message: ${err?.message || "No message"}`);
+            pushLog(`🔍 err type: ${typeof err}`);
+            pushLog(`🔍 err.toString(): ${String(err)}`);
+            pushLog(`🔍 full err:`, err);
             return [];
           })
         )
         .subscribe();
     } catch (e) {
-      pushLog("💥 Caught sync error:");
+      pushLog("💥 Sync error:");
       pushLog(String(e));
     }
   }, [pushLog]);
