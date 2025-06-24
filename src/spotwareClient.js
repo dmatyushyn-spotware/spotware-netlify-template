@@ -4,10 +4,11 @@ import {
   registerEvent,
   getAccountInformation
 } from '@spotware-web-team/sdk'
-import { take, tap, catchError, mergeMap } from 'rxjs'
+import { catchError, take, tap, mergeMap } from 'rxjs'
 import { createLogger } from '@veksa/logger'
 
 let client = null
+let isConnected = false
 let logCallback = null
 
 export const setLogger = (cb) => {
@@ -21,50 +22,55 @@ const log = (msg) => {
   }
 }
 
-export const connect = async (setStatus = () => {}) => {
+export const initClient = (onConnected = () => {}, onError = () => {}) => {
   const logger = createLogger(true)
   client = createClientAdapter({ logger })
+  log("🛰 Connecting to Spotware...")
 
-  log('🛰 Connecting to Spotware...')
+  // Первый handshake
   handleConfirmEvent(client, {}).pipe(take(1)).subscribe()
 
+  // Подписка на события Spotware
   registerEvent(client)
     .pipe(
+      tap((event) => {
+        log("📥 Incoming event: " + JSON.stringify(event, null, 2))
+      }),
       take(1),
       tap(() => {
+        // Второй handshake
         handleConfirmEvent(client, {}).pipe(take(1)).subscribe()
-        log('✅ Connected to Spotware')
-        setStatus('Connected')
+        isConnected = true
+        log("✅ Connected to Spotware")
+        onConnected()
       }),
       catchError((error) => {
-        log('❌ Connection failed: ' + error.message)
-        setStatus('Connection failed')
+        log("❌ Connection failed: " + error.message)
+        onError(error)
         return []
       })
     )
     .subscribe()
 }
 
-export const getClient = () => client
-
 export const fetchAccountInfo = async (setAccounts = () => {}) => {
-  if (!client) {
-    log('❌ Client not connected')
+  if (!client || !isConnected) {
+    log("❌ Client not connected")
     return
   }
 
-  log('📡 Requesting account information...')
+  log("📡 Requesting account information...")
   getAccountInformation(client, {})
     .pipe(
       take(1),
       mergeMap((res) => {
         const accounts = res?.payload?.payload?.accounts || []
-        log('📦 Account info received')
+        log("📦 Account info received")
         setAccounts(accounts)
         return []
       }),
       catchError((err) => {
-        log('❌ Failed to get account info: ' + err.message)
+        log("❌ Failed to get account info: " + err.message)
         return []
       })
     )
