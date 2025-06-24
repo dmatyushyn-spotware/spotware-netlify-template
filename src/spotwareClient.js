@@ -6,7 +6,7 @@ import {
   getAccountInformation
 } from "@spotware-web-team/sdk";
 import { createLogger } from "@veksa/logger";
-import { take, tap, catchError } from "rxjs";
+import { take, tap } from "rxjs";
 
 export const useSpotwareClient = () => {
   const adapter = useRef(null);
@@ -37,10 +37,6 @@ export const useSpotwareClient = () => {
 
           setConnected(true);
           pushLog("✅ Connected to Spotware");
-        }),
-        catchError((err) => {
-          pushLog(`❌ Connection failed: ${err.message}`);
-          return [];
         })
       )
       .subscribe();
@@ -54,19 +50,16 @@ export const useSpotwareClient = () => {
 
     pushLog("📡 Fetching account info...");
 
-    getAccountInformation(adapter.current, {}) // <-- ВАЖНО: пустой объект
+    getAccountInformation(adapter.current, {}) // <- точно как у программиста
       .pipe(
         take(1),
         tap((result) => {
-          pushLog(`📘 Account Info:\n${JSON.stringify(result, null, 2)}`);
-        }),
-        catchError((err) => {
-          pushLog(`❌ Account fetch failed: ${err?.message || err}`);
-          return [];
+          // Прямой вывод как у программиста
+          setLogs((prevLogs) => [...prevLogs, JSON.stringify(result, null, 2)]);
         })
       )
       .subscribe();
-  }, [pushLog]);
+  }, []);
 
   return { connected, logs, getAccountInfo };
 };
