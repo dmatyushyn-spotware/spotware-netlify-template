@@ -54,40 +54,32 @@ export const useSpotwareClient = () => {
 
     pushLog("📰 Fetching account info...");
 
-   const getAccountInfo = useCallback(() => {
-  if (!adapter.current) {
-    pushLog("⚠️ Not connected");
-    return;
-  }
+    const observable = getAccountInformation(adapter.current, {});
+    pushLog(`📤 Raw observable: ${String(observable)}`);
 
-  pushLog("📰 Fetching account info...");
-
-  const observable = getAccountInformation(adapter.current, {});
-  pushLog(`📤 Raw observable: ${String(observable)}`);
-
-  try {
-    observable
-      .pipe(
-        take(1),
-        tap((result) => {
-          pushLog(`✅ Raw result type: ${typeof result}`);
-          pushLog(`✅ Raw result stringified:\n${JSON.stringify(result, null, 2)}`);
-        }),
-        catchError((err) => {
-          pushLog("❌ Account fetch failed.");
-          pushLog(`🔍 typeof err: ${typeof err}`);
-          pushLog(`🔍 err (stringified): ${JSON.stringify(err)}`);
-          pushLog(`🔍 err as string: ${String(err)}`);
-          pushLog(`🔍 err.message: ${err?.message || "No message"}`);
-          return [];
-        })
-      )
-      .subscribe();
-  } catch (e) {
-    pushLog("💥 Caught sync error:");
-    pushLog(String(e));
-  }
-}, [pushLog]);
+    try {
+      observable
+        .pipe(
+          take(1),
+          tap((result) => {
+            pushLog(`✅ Raw result type: ${typeof result}`);
+            pushLog(`✅ Raw result stringified:\n${JSON.stringify(result, null, 2)}`);
+          }),
+          catchError((err) => {
+            pushLog("❌ Account fetch failed.");
+            pushLog(`🔍 typeof err: ${typeof err}`);
+            pushLog(`🔍 err (stringified): ${JSON.stringify(err)}`);
+            pushLog(`🔍 err as string: ${String(err)}`);
+            pushLog(`🔍 err.message: ${err?.message || "No message"}`);
+            return [];
+          })
+        )
+        .subscribe();
+    } catch (e) {
+      pushLog("💥 Caught sync error:");
+      pushLog(String(e));
+    }
+  }, [pushLog]);
 
   return { connected, logs, getAccountInfo };
 };
