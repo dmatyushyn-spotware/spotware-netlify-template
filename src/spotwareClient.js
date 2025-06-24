@@ -3,14 +3,15 @@ import {
   handleConfirmEvent,
   getAccountInformation
 } from '@spotware-web-team/sdk';
-import { createClientAdapter } from '@spotware-web-team/external-api';
+
+import { createClientAdapter } from '@spotware-web-team/sdk-external-api';
 import { createLogger } from '@veksa/logger';
+
 import { take, tap, catchError } from 'rxjs';
 
 let adapter = null;
 
-export const logs = [];
-
+// Экспортируемая функция для подключения
 export function connect(setStatus, setConnected, pushLog) {
   const logger = createLogger(true);
   adapter = createClientAdapter({ logger });
@@ -18,28 +19,28 @@ export function connect(setStatus, setConnected, pushLog) {
   setStatus('Connecting...');
   pushLog('⚡ Connecting to Spotware...');
 
+  // Подтверждение клиента
   handleConfirmEvent(adapter, {})
     .pipe(take(1))
     .subscribe(event => {
-      pushLog(`✅ Confirm Event Received: ${JSON.stringify(event)}`);
+      pushLog(`✅ Confirmed: ${JSON.stringify(event)}`);
     });
 
+  // Регистрация событий
   registerEvent(adapter)
     .pipe(
       take(1),
       tap(() => {
-        handleConfirmEvent(adapter, {})
-          .pipe(take(1))
-          .subscribe(event => {
-            pushLog(`✅ Second Confirm: ${JSON.stringify(event)}`);
-          });
+        handleConfirmEvent(adapter, {}).pipe(take(1)).subscribe(event => {
+          pushLog(`📩 Session confirmed again: ${JSON.stringify(event)}`);
+        });
 
         setConnected(true);
         setStatus('Connected');
         pushLog('🎉 Connected to Spotware.');
       }),
-      catchError(() => {
-        pushLog('❌ Error during registration to Spotware.');
+      catchError(err => {
+        pushLog(`❌ Registration failed: ${err.message}`);
         setStatus('Connection error');
         return [];
       })
@@ -47,9 +48,10 @@ export function connect(setStatus, setConnected, pushLog) {
     .subscribe();
 }
 
+// Получение информации по аккаунту
 export function fetchAccountInfo(pushLog) {
   if (!adapter) {
-    pushLog('⚠️ Not connected to Spotware.');
+    pushLog('⚠️ Not connected. Call connect() first.');
     return;
   }
 
@@ -57,10 +59,10 @@ export function fetchAccountInfo(pushLog) {
     .pipe(
       take(1),
       tap(info => {
-        pushLog(`📘 Account Info: ${JSON.stringify(info, null, 2)}`);
+        pushLog(`📘 Account Info:\n${JSON.stringify(info, null, 2)}`);
       }),
       catchError(err => {
-        pushLog(`❌ Failed to fetch account info: ${err}`);
+        pushLog(`❌ Failed to fetch account info: ${err.message}`);
         return [];
       })
     )
