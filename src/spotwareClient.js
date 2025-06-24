@@ -27,15 +27,17 @@ export const useSpotwareClient = () => {
       .pipe(
         take(1),
         tap(() => {
-          handleConfirmEvent(adapter.current, {})
-            .pipe(take(1))
-            .subscribe();
+          handleConfirmEvent(adapter.current, {}).pipe(take(1)).subscribe();
 
           setConnected(true);
           pushLog("✅ Connected to Spotware");
         }),
         catchError((err) => {
-          pushLog(`❌ Connection failed: ${err.message}`);
+          const errText = typeof err === "object"
+            ? err?.message || err?.toString?.() || JSON.stringify(err)
+            : String(err);
+
+          pushLog(`❌ Connection failed: ${errText}`);
           return [];
         })
       )
@@ -49,14 +51,23 @@ export const useSpotwareClient = () => {
     }
 
     pushLog("📡 Fetching account info...");
-    getAccountInformation(adapter.current, {})
+
+    getAccountInformation(adapter.current)
       .pipe(
         take(1),
         tap((result) => {
-          pushLog(`📘 Account Info:\n${JSON.stringify(result, null, 2)}`);
+          const message = typeof result === "object"
+            ? result?.toString?.() || JSON.stringify(result)
+            : String(result);
+
+          pushLog(`📘 Account Info:\n${message}`);
         }),
         catchError((err) => {
-          pushLog(`❌ Account fetch failed: ${err.message}`);
+          const errText = typeof err === "object"
+            ? err?.message || err?.toString?.() || JSON.stringify(err)
+            : String(err);
+
+          pushLog(`❌ Account fetch failed: ${errText}`);
           return [];
         })
       )
