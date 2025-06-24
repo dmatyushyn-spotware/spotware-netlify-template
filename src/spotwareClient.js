@@ -1,54 +1,56 @@
-// src/spotwareClient.js
 import { createClientAdapter } from '@spotware-web-team/sdk-external-api'
 import {
   handleConfirmEvent,
   registerEvent,
   getAccountInformation
 } from '@spotware-web-team/sdk'
-import { take, tap } from 'rxjs'
+import { take, tap, catchError } from 'rxjs'
 import { createLogger } from '@veksa/logger'
 
 let adapter = null
 
-/**
- * Инициализация клиента и подключение к Spotware
- */
-export function initClient(pushLog, setStatus) {
+export const connect = (setStatus, pushLog) => {
   const logger = createLogger(true)
-
   adapter = createClientAdapter({ logger })
-  pushLog('🛰️ Connecting to Spotware...')
 
-  // Подтверждаем соединение
-  handleConfirmEvent(adapter, {}).pipe(take(1)).subscribe()
+  pushLog('🛰️ Connecting...')
 
-  // Регистрируем событие
+  handleConfirmEvent(adapter, {})
+    .pipe(take(1))
+    .subscribe()
+
   registerEvent(adapter)
     .pipe(
       take(1),
       tap(() => {
         handleConfirmEvent(adapter, {}).pipe(take(1)).subscribe()
-        pushLog('✅ Connected to Spotware')
+        pushLog('✅ Connected')
         setStatus('Connected')
+      }),
+      catchError((error) => {
+        pushLog(`❌ Connection failed: ${error}`)
+        setStatus('Connection failed')
+        return []
       })
     )
     .subscribe()
 }
 
-/**
- * Запрашивает информацию по аккаунту
- */
-export function fetchAccountInfo(pushLog) {
+export const getAccountInfo = (pushLog) => {
   if (!adapter) {
-    pushLog('⚠️ Not connected. Call initClient() first.')
+    pushLog('⚠️ Not connected')
     return
   }
 
   getAccountInformation(adapter, {})
     .pipe(
       take(1),
-      tap(info => {
-        pushLog(`📘 Account Info:\n${JSON.stringify(info, null, 2)}`)
+      tap(result => {
+        pushLog('📘 Account Info:\n' + JSON.stringify(result, null, 2))
+      }),
+      catchError(error => {
+        pushLog(`❌ Account fetch failed: ${error}`)
+        return []
       })
     )
     .subscribe()
