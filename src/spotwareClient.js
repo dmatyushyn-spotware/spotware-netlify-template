@@ -8,53 +8,63 @@ import { take, tap, catchError, mergeMap } from 'rxjs'
 import { createLogger } from '@veksa/logger'
 
 let client = null
+let logCallback = null
+
+export const setLogger = (cb) => {
+  logCallback = cb
+}
+
+const log = (msg) => {
+  console.log(msg)
+  if (typeof logCallback === 'function') {
+    logCallback(msg)
+  }
+}
 
 export const connect = async (setStatus = () => {}) => {
   const logger = createLogger(true)
   client = createClientAdapter({ logger })
 
-  // Первый этап: handshake
+  log('🛰 Connecting to Spotware...')
   handleConfirmEvent(client, {}).pipe(take(1)).subscribe()
 
-  // Подтверждение от сервера
   registerEvent(client)
     .pipe(
       take(1),
       tap(() => {
         handleConfirmEvent(client, {}).pipe(take(1)).subscribe()
-        console.log("✅ Connected to Spotware")
-        setStatus("Connected")
+        log('✅ Connected to Spotware')
+        setStatus('Connected')
       }),
       catchError((error) => {
-        console.error("❌ Connection failed:", error)
-        setStatus("Connection failed")
+        log('❌ Connection failed: ' + error.message)
+        setStatus('Connection failed')
         return []
       })
     )
     .subscribe()
 }
 
-// Универсальный доступ к клиенту
 export const getClient = () => client
 
-// Запрос информации об аккаунте
 export const fetchAccountInfo = async (setAccounts = () => {}) => {
   if (!client) {
-    console.error("❌ Client not connected")
+    log('❌ Client not connected')
     return
   }
 
+  log('📡 Requesting account information...')
   getAccountInformation(client, {})
     .pipe(
       take(1),
       mergeMap((res) => {
         const accounts = res?.payload?.payload?.accounts || []
-        console.log("📦 Accounts:", accounts)
+        log('📦 Account info received')
         setAccounts(accounts)
         return []
       }),
       catchError((err) => {
-        console.error("❌ Account info error:", err)
+        log('❌ Failed to get account info: ' + err.message)
         return []
       })
     )
