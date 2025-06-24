@@ -56,7 +56,10 @@ export const useSpotwareClient = () => {
           pushLog(`📘 Account Info:\n${JSON.stringify(result, null, 2)}`);
         }),
         catchError((err) => {
-          pushLog(`❌ Account fetch failed: ${err.message}`);
+          const msg = typeof err === "object" && err !== null && "message" in err
+            ? err.message
+            : JSON.stringify(err);
+          pushLog(`❌ Account fetch failed: ${msg}`);
           return [];
         })
       )
