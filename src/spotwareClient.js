@@ -1,66 +1,78 @@
+import { createClientAdapter } from '@spotware-web-team/sdk-external-api'
 import {
-  createClientAdapter,
-  IExternalTransportAdapter
-} from "@spotware/external-api";
-import {
-  getAccountInformation,
   handleConfirmEvent,
   registerEvent,
+  getAccountInformation,
   ProtoOAClientSessionEvent
-} from "@spotware/sdk";
-import { tap, take, filter } from "rxjs";
-import { createLogger } from "@veksa/logger";
+} from '@spotware-web-team/sdk'
+import { catchError, take, tap, mergeMap } from 'rxjs'
+import { createLogger } from '@veksa/logger'
 
-let adapter = null;
-let loggerCallback = null;
-let onConnectedCallback = null;
+let client = null
+let isConnected = false
+let logCallback = null
 
-// Логгер, в который можно в любой момент дописать функцию
-const logger = createLogger(true);
-logger.log = (msg, ...args) => {
-  console.log(msg, ...args);
-  if (loggerCallback) loggerCallback(`${msg} ${args.join(" ")}`);
-};
+export const setLogger = (cb) => {
+  logCallback = cb
+}
 
-export const setLogger = (callback) => {
-  loggerCallback = callback;
-};
+const log = (msg) => {
+  console.log(msg)
+  if (typeof logCallback === 'function') {
+    logCallback(msg)
+  }
+}
 
-export const connect = (onConnected) => {
-  adapter = createClientAdapter({ logger });
-  onConnectedCallback = onConnected;
+export const initClient = (onConnected = () => {}, onError = () => {}) => {
+  const logger = createLogger(true)
+  client = createClientAdapter({ logger })
 
-  loggerCallback?.("🔌 Connecting to Spotware...");
+  log("🛰 Connecting to Spotware...")
 
-  handleConfirmEvent(adapter, {}).pipe(take(1)).subscribe();
+  handleConfirmEvent(client, {}).pipe(take(1)).subscribe()
 
-  registerEvent(adapter)
+  registerEvent(client)
     .pipe(
-      tap((evt) => {
-        loggerCallback?.(`📥 Incoming event: ${JSON.stringify(evt, null, 2)}`);
+      tap((event) => {
+        log("📥 Incoming event: " + JSON.stringify(event, null, 2))
 
-        if (evt.payloadType === ProtoOAClientSessionEvent) {
-          loggerCallback?.("✅ Session established (ProtoOAClientSessionEvent)");
-
-          onConnectedCallback?.(); // Установлено соединение
+        // Подтверждение успешной сессии — только при ProtoOAClientSessionEvent (2043)
+        if (event.payloadType === ProtoOAClientSessionEvent) {
+          log("✅ Session established (2043)")
+          isConnected = true
+          onConnected()
         }
+      }),
+      catchError((error) => {
+        log("❌ Connection failed: " + error.message)
+        onError(error)
+        return []
       })
     )
-    .subscribe();
-};
+    .subscribe()
+}
 
-export const fetchAccountInfo = () => {
-  if (!adapter) {
-    loggerCallback?.("❌ Not connected");
-    return;
+export const fetchAccountInfo = async (setAccounts = () => {}) => {
+  if (!client || !isConnected) {
+    log("❌ Client not connected")
+    return
   }
 
-  getAccountInformation(adapter, {})
+  log("📡 Requesting account information...")
+
+  getAccountInformation(client, {})
     .pipe(
       take(1),
-      tap((result) => {
-        loggerCallback?.(`📄 Account Info: ${JSON.stringify(result, null, 2)}`);
+      mergeMap((res) => {
+        const accounts = res?.payload?.payload?.accounts || []
+        log("📦 Account info received")
+        setAccounts(accounts)
+        return []
+      }),
+      catchError((err) => {
+        log("❌ Failed to get account info: " + err.message)
+        return []
       })
     )
-    .subscribe();
-};
+    .subscribe()
+}
