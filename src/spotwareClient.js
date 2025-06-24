@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { createClientAdapter } from "@spotware-web-team/sdk-external-api";
-import { handleConfirmEvent, registerEvent, getAccountInformation } from "@spotware-web-team/sdk";
+import {
+  handleConfirmEvent,
+  registerEvent,
+  getAccountInformation
+} from "@spotware-web-team/sdk";
 import { createLogger } from "@veksa/logger";
 import { take, tap, catchError } from "rxjs";
 
@@ -17,38 +21,25 @@ export const useSpotwareClient = () => {
     const logger = createLogger(true);
     adapter.current = createClientAdapter({ logger });
 
-    pushLog("\u{1F50C} Connecting to Spotware...");
+    pushLog("🔌 Connecting to Spotware...");
 
-    const confirm$ = handleConfirmEvent(adapter.current, {});
-    if (!confirm$ || typeof confirm$.subscribe !== 'function') {
-      pushLog("❌ handleConfirmEvent failed: not a valid observable");
-      return;
-    }
+    handleConfirmEvent(adapter.current, {})
+      .pipe(take(1))
+      .subscribe();
 
-    confirm$.pipe(take(1)).subscribe();
-
-    const reg$ = registerEvent(adapter.current);
-    if (!reg$ || typeof reg$.pipe !== 'function') {
-      pushLog("❌ registerEvent failed: not a valid observable");
-      return;
-    }
-
-    reg$
+    registerEvent(adapter.current)
       .pipe(
         take(1),
         tap(() => {
-          const confirmAgain$ = handleConfirmEvent(adapter.current, {});
-          if (!confirmAgain$ || typeof confirmAgain$.subscribe !== 'function') {
-            pushLog("❌ handleConfirmEvent (2nd) failed: not a valid observable");
-            return;
-          }
+          handleConfirmEvent(adapter.current, {})
+            .pipe(take(1))
+            .subscribe();
 
-          confirmAgain$.pipe(take(1)).subscribe();
           setConnected(true);
           pushLog("✅ Connected to Spotware");
         }),
         catchError((err) => {
-          pushLog(`❌ registerEvent catchError: ${err?.message || String(err)}`);
+          pushLog(`❌ Connection failed: ${err?.message || String(err)}`);
           return [];
         })
       )
@@ -61,23 +52,27 @@ export const useSpotwareClient = () => {
       return;
     }
 
-    pushLog("\u{1F4F0} Fetching account info...");
+    pushLog("📰 Fetching account info...");
 
-    const account$ = getAccountInformation(adapter.current, {});
-    if (!account$ || typeof account$.pipe !== 'function') {
-      pushLog("❌ getAccountInformation failed: not a valid observable");
-      return;
-    }
-
-    account$
+    getAccountInformation(adapter.current, {})
       .pipe(
         take(1),
         tap((result) => {
-          pushLog(`📘 Raw account result: ${typeof result}`);
+          if (!result) {
+            pushLog("⚠️ Warning: Received empty result from getAccountInformation()");
+          }
+
+          pushLog("📘 Raw result:");
+          pushLog(String(result));
+
           try {
-            pushLog(JSON.stringify(result, null, 2));
+            const json = JSON.stringify(result, null, 2);
+            pushLog(`📘 Account Info (JSON):\n${json}`);
           } catch (err) {
-            pushLog(`❌ JSON stringify error: ${err?.message || String(err)}`);
+            pushLog("❌ JSON.stringify failed:");
+            pushLog(`🔍 typeof result: ${typeof result}`);
+            pushLog(`🔍 result (stringified): ${String(result)}`);
+            pushLog(`🔍 err.message: ${err?.message || String(err)}`);
           }
         }),
         catchError((err) => {
@@ -85,7 +80,7 @@ export const useSpotwareClient = () => {
           pushLog(`🔍 typeof err: ${typeof err}`);
           pushLog(`🔍 err (stringified): ${JSON.stringify(err)}`);
           pushLog(`🔍 err as string: ${String(err)}`);
-          pushLog(`🔍 err.message: ${err?.message}`);
+          pushLog(`🔍 err.message: ${err?.message || "N/A"}`);
           return [];
         })
       )
