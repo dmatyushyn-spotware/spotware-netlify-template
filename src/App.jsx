@@ -10,12 +10,18 @@ export default function App() {
       <h1>Spotware Client Status</h1>
       <p><strong>Status:</strong> {status}</p>
 
-      <button onClick={() => connect(setStatus)} style={{ marginBottom: 10, padding: "10px 20px" }}>
+      <button
+        onClick={() => connect(setStatus)}
+        style={{ padding: "10px 20px", cursor: "pointer", marginBottom: 10 }}
+      >
         Connect to Spotware
       </button>
 
       {status === "Connected" && (
-        <button onClick={() => fetchAccountInfo(setAccounts)} style={{ marginLeft: 10, padding: "10px 20px" }}>
+        <button
+          onClick={() => fetchAccountInfo(setAccounts)}
+          style={{ padding: "10px 20px", cursor: "pointer", marginLeft: 10 }}
+        >
           Get Account Info
         </button>
       )}
@@ -26,7 +32,9 @@ export default function App() {
           <ul>
             {accounts.map((acc, idx) => (
               <li key={idx}>
-                ID: {acc.ctidTraderAccountId} — Balance: {acc.balance} — Currency: {acc.currency}
+                <strong>ID:</strong> {acc.ctidTraderAccountId} —
+                <strong> Balance:</strong> {acc.balance} —
+                <strong> Currency:</strong> {acc.currency}
               </li>
             ))}
           </ul>
