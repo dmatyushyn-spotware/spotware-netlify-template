@@ -32,17 +32,13 @@ export const useSpotwareClient = () => {
 
     pushLog("🔌 Connecting to Spotware...");
 
-    handleConfirmEvent(adapter.current, {})
-      .pipe(take(1))
-      .subscribe();
+    handleConfirmEvent(adapter.current, {}).pipe(take(1)).subscribe();
 
     registerEvent(adapter.current)
       .pipe(
         take(1),
         tap(() => {
-          handleConfirmEvent(adapter.current, {})
-            .pipe(take(1))
-            .subscribe();
+          handleConfirmEvent(adapter.current, {}).pipe(take(1)).subscribe();
 
           setConnected(true);
           pushLog("✅ Connected to Spotware");
@@ -70,9 +66,21 @@ export const useSpotwareClient = () => {
           take(1),
           tap((result) => {
             pushLog("✅ Result received:");
-            pushLog(result);
-            pushLog("✅ Raw result: (typeof)" + typeof result);
-            pushLog("✅ Raw result: " + String(result));
+            try {
+              const trader = result?.payload?.payload?.Trader;
+              if (trader) {
+                pushLog("👤 Trader Info:");
+                pushLog(trader);
+              } else {
+                pushLog("⚠️ Trader field not found in response");
+              }
+
+              pushLog("🧾 Full response:");
+              pushLog(JSON.stringify(result, null, 2));
+            } catch (e) {
+              pushLog("💥 Error while processing response:");
+              pushLog(String(e));
+            }
           }),
           catchError((err) => {
             pushLog("❌ Account fetch failed.");
@@ -103,9 +111,21 @@ export const useSpotwareClient = () => {
           take(1),
           tap((result) => {
             pushLog("✅ Symbol result received:");
-            pushLog(result);
-            pushLog("✅ Raw result: (typeof)" + typeof result);
-            pushLog("✅ Raw result: " + String(result));
+            try {
+              const symbolData = result?.payload?.payload;
+              if (symbolData) {
+                pushLog("📊 Symbol Payload:");
+                pushLog(symbolData);
+              } else {
+                pushLog("⚠️ Symbol payload not found in response");
+              }
+
+              pushLog("🧾 Full symbol response:");
+              pushLog(JSON.stringify(result, null, 2));
+            } catch (e) {
+              pushLog("💥 Error while processing symbol response:");
+              pushLog(String(e));
+            }
           }),
           catchError((err) => {
             pushLog("❌ Symbol fetch failed.");
