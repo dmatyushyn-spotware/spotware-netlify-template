@@ -1,23 +1,20 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import {
-  createClientAdapter,
-  IExternalTransportAdapter
-} from "@spotware/external-api";
+import { createClientAdapter } from "@spotware-web-team/sdk-external-api";
 import {
   getAccountInformation,
   getSymbol,
   handleConfirmEvent,
   registerEvent
-} from "@spotware/sdk";
+} from "@spotware-web-team/sdk";
 import { take, tap, catchError } from "rxjs";
 import { createLogger } from "@veksa/logger";
 
 export const SpotwareClientComponent = () => {
-  const adapter = useRef<IExternalTransportAdapter | null>(null);
+  const adapter = useRef(null);
   const [connected, setConnected] = useState(false);
-  const [logs, setLogs] = useState<string[]>([]);
+  const [logs, setLogs] = useState([]);
 
-  const pushLog = useCallback((entry: any) => {
+  const pushLog = useCallback((entry) => {
     if (typeof entry === "object") {
       setLogs(prev => [...prev, JSON.stringify(entry, null, 2)]);
     } else {
