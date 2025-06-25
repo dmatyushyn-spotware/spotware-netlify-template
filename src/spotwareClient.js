@@ -1,30 +1,36 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { createClientAdapter } from "@spotware-web-team/sdk-external-api";
 import {
-  getAccountInformation,
-  getSymbol,
   handleConfirmEvent,
-  registerEvent
+  registerEvent,
+  getAccountInformation,
+  getSymbol
 } from "@spotware-web-team/sdk";
-import { take, tap, catchError } from "rxjs";
 import { createLogger } from "@veksa/logger";
+import { take, tap, catchError } from "rxjs";
 
-export const SpotwareClientComponent = () => {
+export const useSpotwareClient = () => {
   const adapter = useRef(null);
   const [connected, setConnected] = useState(false);
   const [logs, setLogs] = useState([]);
 
-  const pushLog = useCallback((entry) => {
-    if (typeof entry === "object") {
-      setLogs(prev => [...prev, JSON.stringify(entry, null, 2)]);
+  const pushLog = useCallback((msg, obj = null) => {
+    if (typeof msg === "object") {
+      setLogs((prev) => [...prev, JSON.stringify(msg, null, 2)]);
     } else {
-      setLogs(prev => [...prev, String(entry)]);
+      setLogs((prev) => [...prev, String(msg)]);
+    }
+
+    if (obj) {
+      setLogs((prev) => [...prev, JSON.stringify(obj, null, 2)]);
     }
   }, []);
 
   useEffect(() => {
     const logger = createLogger(true);
     adapter.current = createClientAdapter({ logger });
+
+    pushLog("🔌 Connecting to Spotware...");
 
     handleConfirmEvent(adapter.current, {}).pipe(take(1)).subscribe();
 
@@ -33,11 +39,12 @@ export const SpotwareClientComponent = () => {
         take(1),
         tap(() => {
           handleConfirmEvent(adapter.current, {}).pipe(take(1)).subscribe();
+
           setConnected(true);
           pushLog("✅ Connected to Spotware");
         }),
-        catchError(err => {
-          pushLog("❌ Connection failed");
+        catchError((err) => {
+          pushLog("❌ Connection failed:");
           pushLog(err?.message || String(err));
           return [];
         })
@@ -45,77 +52,100 @@ export const SpotwareClientComponent = () => {
       .subscribe();
   }, [pushLog]);
 
-  const handleAccountInfo = useCallback(() => {
+  const getAccountInfo = useCallback(() => {
     if (!adapter.current) {
-      pushLog("⚠️ Adapter not ready");
+      pushLog("⚠️ Not connected");
       return;
     }
 
-    getAccountInformation(adapter.current, {})
-      .pipe(
-        take(1),
-        tap(result => {
-          pushLog("📰 Account Info:");
-          pushLog(result);
-        }),
-        catchError(err => {
-          pushLog("❌ Account fetch error");
-          pushLog(err?.message || String(err));
-          return [];
-        })
-      )
-      .subscribe();
+    pushLog("📰 Fetching account info...");
+
+    try {
+      getAccountInformation(adapter.current, {})
+        .pipe(
+          take(1),
+          tap((result) => {
+            pushLog("✅ Result received:");
+            try {
+              const trader = result?.payload?.payload?.Trader;
+              if (trader) {
+                pushLog("👤 Trader Info:");
+                pushLog(trader);
+              } else {
+                pushLog("⚠️ Trader field not found in response");
+              }
+
+              pushLog("🧾 Full response:");
+              pushLog(JSON.stringify(result, null, 2));
+            } catch (e) {
+              pushLog("💥 Error while processing response:");
+              pushLog(String(e));
+            }
+          }),
+          catchError((err) => {
+            pushLog("❌ Account fetch failed.");
+            pushLog(`🔍 err type: ${typeof err}`);
+            pushLog(`🔍 err.toString(): ${String(err)}`);
+            pushLog(`🔍 full err:`, err);
+            return [];
+          })
+        )
+        .subscribe();
+    } catch (e) {
+      pushLog("💥 Sync error:");
+      pushLog(String(e));
+    }
   }, [pushLog]);
 
-  const handleSymbolInfo = useCallback(() => {
+  const getSymbolInfo = useCallback(() => {
     if (!adapter.current) {
-      pushLog("⚠️ Adapter not ready");
+      pushLog("⚠️ Not connected");
       return;
     }
 
-    getSymbol(adapter.current, { symbolId: [1] })
-      .pipe(
-        take(1),
-        tap(result => {
-          pushLog("📈 Symbol Info:");
-          pushLog(result);
-        }),
-        catchError(err => {
-          pushLog("❌ Symbol fetch error");
-          pushLog(err?.message || String(err));
-          return [];
-        })
-      )
-      .subscribe();
+    pushLog("📈 Fetching symbol info...");
+
+    try {
+      getSymbol(adapter.current, { symbolId: [1] })
+        .pipe(
+          take(1),
+          tap((result) => {
+            pushLog("✅ Symbol result received:");
+            try {
+              const symbolData = result?.payload?.payload;
+              if (symbolData) {
+                pushLog("📊 Symbol Payload:");
+                pushLog(symbolData);
+              } else {
+                pushLog("⚠️ Symbol payload not found in response");
+              }
+
+              pushLog("🧾 Full symbol response:");
+              pushLog(JSON.stringify(result, null, 2));
+            } catch (e) {
+              pushLog("💥 Error while processing symbol response:");
+              pushLog(String(e));
+            }
+          }),
+          catchError((err) => {
+            pushLog("❌ Symbol fetch failed.");
+            pushLog(`🔍 err type: ${typeof err}`);
+            pushLog(`🔍 err.toString(): ${String(err)}`);
+            pushLog(`🔍 full err:`, err);
+            return [];
+          })
+        )
+        .subscribe();
+    } catch (e) {
+      pushLog("💥 Sync error (symbol):");
+      pushLog(String(e));
+    }
   }, [pushLog]);
 
-  return (
-    <div style={{ padding: 20 }}>
-      <h2>Status: {connected ? "✅ Connected" : "❌ Not Connected"}</h2>
-
-      <div style={{ marginBottom: 10 }}>
-        <button disabled={!connected} onClick={handleAccountInfo}>
-          Get Account Info
-        </button>
-        <button disabled={!connected} onClick={handleSymbolInfo} style={{ marginLeft: 10 }}>
-          Get Symbol Info
-        </button>
-      </div>
-
-      <div
-        style={{
-          background: "#eee",
-          padding: 10,
-          borderRadius: 5,
-          maxHeight: 400,
-          overflowY: "auto",
-          whiteSpace: "pre-wrap"
-        }}
-      >
-        {logs.map((log, i) => (
-          <div key={i} style={{ marginBottom: 8 }}>{log}</div>
-        ))}
-      </div>
-    </div>
-  );
+  return {
+    connected,
+    logs,
+    getAccountInfo,
+    getSymbolInfo
+  };
 };
