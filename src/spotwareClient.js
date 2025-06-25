@@ -70,6 +70,8 @@ export const useSpotwareClient = () => {
           tap((result) => {
             pushLog("✅ Result received:");
             pushLog(result);
+            pushLog("✅ Raw result: (typeof)"+ typeof result);
+            pushLog("✅ Raw result: "+ String(result));
           }),
           catchError((err) => {
             pushLog("❌ Account fetch failed.");
