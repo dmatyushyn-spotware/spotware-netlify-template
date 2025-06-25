@@ -58,69 +58,60 @@ export const useSpotwareClient = () => {
       return;
     }
 
-    pushLog("📰 Fetching account info...");
+    pushLog("📰 [STEP 1] Starting getAccountInformation");
 
     let observable;
 
     try {
       observable = getAccountInformation(adapter.current, {});
+      pushLog("✅ [STEP 2] getAccountInformation returned");
     } catch (e) {
-      pushLog("💥 Exception during getAccountInformation call:");
+      pushLog("💥 [STEP 2.1] Exception during getAccountInformation:");
       pushLog(e.message || String(e));
       return;
     }
 
     if (!observable || typeof observable.pipe !== "function") {
-      pushLog("❌ getAccountInformation returned invalid observable:");
+      pushLog("❌ [STEP 3] Invalid observable returned");
       pushLog(observable);
       return;
     }
+
+    pushLog("🔁 [STEP 4] Starting pipe/subscribe");
 
     observable
       .pipe(
         take(1),
         tap((result) => {
-          pushLog("✅ Result received:");
-          pushLog("🔍 typeof result: " + typeof result);
-          pushLog("🔍 instanceof Object: " + (result instanceof Object));
+          pushLog("📥 [STEP 5] tap() triggered");
 
           try {
-            const resultStr = JSON.stringify(result);
-            pushLog("🔍 First 30 chars of JSON: " + resultStr.substring(0, 30));
+            const json = JSON.stringify(result);
+            pushLog("✅ [STEP 5.1] First 30 chars: " + json.slice(0, 30));
           } catch (e) {
-            pushLog("❌ JSON.stringify failed:");
+            pushLog("❌ [STEP 5.2] JSON.stringify failed:");
             pushLog(e.message);
           }
 
-          if (result && typeof result === "object") {
-            pushLog("🔍 Top-level keys: " + Object.keys(result).join(", "));
-
-            const trader = result?.payload?.payload?.Trader;
-            if (trader) {
-              pushLog("👤 Trader Info:");
-              pushLog(trader);
-            } else {
-              pushLog("⚠️ Trader not found, full response:");
-              try {
-                pushLog(JSON.stringify(result, null, 2));
-              } catch (e) {
-                pushLog("❌ stringify full failed: " + e.message);
-              }
-            }
+          const trader = result?.payload?.payload?.Trader;
+          if (trader) {
+            pushLog("👤 [STEP 5.3] Trader info found:");
+            pushLog(trader);
           } else {
-            pushLog("⚠️ Result is not an object:");
-            pushLog(result);
+            pushLog("⚠️ [STEP 5.4] Trader field missing");
           }
         }),
         catchError((err) => {
-          pushLog("❌ Account fetch failed.");
+          pushLog("❌ [STEP 6] catchError triggered");
           pushLog(`🔍 err type: ${typeof err}`);
           pushLog(`🔍 err.toString(): ${String(err)}`);
           pushLog(`🔍 full err:`, err);
           return [];
         })
       )
-      .subscribe();
+      .subscribe(() => {
+        pushLog("📤 [STEP 7] subscribe completed");
+      });
   }, [pushLog]);
 
   const getSymbolInfo = useCallback(() => {
