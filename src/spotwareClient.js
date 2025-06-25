@@ -60,41 +60,67 @@ export const useSpotwareClient = () => {
 
     pushLog("📰 Fetching account info...");
 
-    try {
-      getAccountInformation(adapter.current, {})
-        .pipe(
-          take(1),
-          tap((result) => {
-            pushLog("✅ Result received:");
-            try {
-              const trader = result?.payload?.payload?.Trader;
-              if (trader) {
-                pushLog("👤 Trader Info:");
-                pushLog(trader);
-              } else {
-                pushLog("⚠️ Trader field not found in response");
-              }
+    let observable;
 
-              pushLog("🧾 Full response:");
-              pushLog(JSON.stringify(result, null, 2));
-            } catch (e) {
-              pushLog("💥 Error while processing response:");
-              pushLog(String(e));
-            }
-          }),
-          catchError((err) => {
-            pushLog("❌ Account fetch failed.");
-            pushLog(`🔍 err type: ${typeof err}`);
-            pushLog(`🔍 err.toString(): ${String(err)}`);
-            pushLog(`🔍 full err:`, err);
-            return [];
-          })
-        )
-        .subscribe();
+    try {
+      observable = getAccountInformation(adapter.current, {});
     } catch (e) {
-      pushLog("💥 Sync error:");
-      pushLog(String(e));
+      pushLog("💥 Exception during getAccountInformation call:");
+      pushLog(e.message || String(e));
+      return;
     }
+
+    if (!observable || typeof observable.pipe !== "function") {
+      pushLog("❌ getAccountInformation returned invalid observable:");
+      pushLog(observable);
+      return;
+    }
+
+    observable
+      .pipe(
+        take(1),
+        tap((result) => {
+          pushLog("✅ Result received:");
+          pushLog("🔍 typeof result: " + typeof result);
+          pushLog("🔍 instanceof Object: " + (result instanceof Object));
+
+          try {
+            const resultStr = JSON.stringify(result);
+            pushLog("🔍 First 30 chars of JSON: " + resultStr.substring(0, 30));
+          } catch (e) {
+            pushLog("❌ JSON.stringify failed:");
+            pushLog(e.message);
+          }
+
+          if (result && typeof result === "object") {
+            pushLog("🔍 Top-level keys: " + Object.keys(result).join(", "));
+
+            const trader = result?.payload?.payload?.Trader;
+            if (trader) {
+              pushLog("👤 Trader Info:");
+              pushLog(trader);
+            } else {
+              pushLog("⚠️ Trader not found, full response:");
+              try {
+                pushLog(JSON.stringify(result, null, 2));
+              } catch (e) {
+                pushLog("❌ stringify full failed: " + e.message);
+              }
+            }
+          } else {
+            pushLog("⚠️ Result is not an object:");
+            pushLog(result);
+          }
+        }),
+        catchError((err) => {
+          pushLog("❌ Account fetch failed.");
+          pushLog(`🔍 err type: ${typeof err}`);
+          pushLog(`🔍 err.toString(): ${String(err)}`);
+          pushLog(`🔍 full err:`, err);
+          return [];
+        })
+      )
+      .subscribe();
   }, [pushLog]);
 
   const getSymbolInfo = useCallback(() => {
