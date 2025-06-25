@@ -3,7 +3,8 @@ import { createClientAdapter } from "@spotware-web-team/sdk-external-api";
 import {
   handleConfirmEvent,
   registerEvent,
-  getAccountInformation
+  getAccountInformation,
+  getSymbol
 } from "@spotware-web-team/sdk";
 import { createLogger } from "@veksa/logger";
 import { take, tap, catchError } from "rxjs";
@@ -31,17 +32,13 @@ export const useSpotwareClient = () => {
 
     pushLog("🔌 Connecting to Spotware...");
 
-    handleConfirmEvent(adapter.current, {})
-      .pipe(take(1))
-      .subscribe();
+    handleConfirmEvent(adapter.current, {}).pipe(take(1)).subscribe();
 
     registerEvent(adapter.current)
       .pipe(
         take(1),
         tap(() => {
-          handleConfirmEvent(adapter.current, {})
-            .pipe(take(1))
-            .subscribe();
+          handleConfirmEvent(adapter.current, {}).pipe(take(1)).subscribe();
 
           setConnected(true);
           pushLog("✅ Connected to Spotware");
@@ -70,23 +67,43 @@ export const useSpotwareClient = () => {
           tap((result) => {
             pushLog("✅ Result received:");
             pushLog(result);
-            pushLog("✅ Raw result: (typeof)"+ typeof result);
-            pushLog("✅ Raw result: "+ String(result));
-          }),
-          catchError((err) => {
-            pushLog("❌ Account fetch failed.");
-            pushLog(`🔍 err type: ${typeof err}`);
-            pushLog(`🔍 err.toString(): ${String(err)}`);
-            pushLog(`🔍 full err:`, err);
-            return [];
           })
         )
         .subscribe();
-    } catch (e) {
-      pushLog("💥 Sync error:");
-      pushLog(String(e));
+    } catch (err) {
+      pushLog("❌ Error fetching account info:");
+      pushLog(err?.message || String(err));
     }
   }, [pushLog]);
 
-  return { connected, logs, getAccountInfo };
+  const getSymbolInfo = useCallback(() => {
+    if (!adapter.current) {
+      pushLog("⚠️ Not connected");
+      return;
+    }
+
+    pushLog("📈 Fetching symbol info...");
+
+    try {
+      getSymbol(adapter.current, { symbolId: [1] }) // Можно заменить на нужный ID
+        .pipe(
+          take(1),
+          tap((result) => {
+            pushLog("✅ Symbol result:");
+            pushLog(result);
+          })
+        )
+        .subscribe();
+    } catch (err) {
+      pushLog("❌ Error fetching symbol info:");
+      pushLog(err?.message || String(err));
+    }
+  }, [pushLog]);
+
+  return {
+    connected,
+    logs,
+    getAccountInfo,
+    getSymbolInfo,
+  };
 };
