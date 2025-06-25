@@ -2,7 +2,7 @@ import React from "react";
 import { useSpotwareClient } from "./spotwareClient";
 
 export default function App() {
-  const { connected, logs, getAccountInfo } = useSpotwareClient();
+  const { connected, logs, getAccountInfo, getSymbolInfo } = useSpotwareClient();
 
   return (
     <div style={{ padding: 20, fontFamily: "Arial" }}>
@@ -10,6 +10,10 @@ export default function App() {
 
       <button onClick={getAccountInfo} disabled={!connected}>
         Get Account Info
+      </button>
+
+      <button onClick={getSymbolInfo} disabled={!connected} style={{ marginLeft: 10 }}>
+        Get Symbol Info
       </button>
 
       <div
