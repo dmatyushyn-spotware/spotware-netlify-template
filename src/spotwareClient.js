@@ -32,13 +32,17 @@ export const useSpotwareClient = () => {
 
     pushLog("🔌 Connecting to Spotware...");
 
-    handleConfirmEvent(adapter.current, {}).pipe(take(1)).subscribe();
+    handleConfirmEvent(adapter.current, {})
+      .pipe(take(1))
+      .subscribe();
 
     registerEvent(adapter.current)
       .pipe(
         take(1),
         tap(() => {
-          handleConfirmEvent(adapter.current, {}).pipe(take(1)).subscribe();
+          handleConfirmEvent(adapter.current, {})
+            .pipe(take(1))
+            .subscribe();
 
           setConnected(true);
           pushLog("✅ Connected to Spotware");
@@ -67,12 +71,21 @@ export const useSpotwareClient = () => {
           tap((result) => {
             pushLog("✅ Result received:");
             pushLog(result);
+            pushLog("✅ Raw result: (typeof)" + typeof result);
+            pushLog("✅ Raw result: " + String(result));
+          }),
+          catchError((err) => {
+            pushLog("❌ Account fetch failed.");
+            pushLog(`🔍 err type: ${typeof err}`);
+            pushLog(`🔍 err.toString(): ${String(err)}`);
+            pushLog(`🔍 full err:`, err);
+            return [];
           })
         )
         .subscribe();
-    } catch (err) {
-      pushLog("❌ Error fetching account info:");
-      pushLog(err?.message || String(err));
+    } catch (e) {
+      pushLog("💥 Sync error:");
+      pushLog(String(e));
     }
   }, [pushLog]);
 
@@ -85,18 +98,27 @@ export const useSpotwareClient = () => {
     pushLog("📈 Fetching symbol info...");
 
     try {
-      getSymbol(adapter.current, { symbolId: [1] }) // Можно заменить на нужный ID
+      getSymbol(adapter.current, { symbolId: [1] })
         .pipe(
           take(1),
           tap((result) => {
-            pushLog("✅ Symbol result:");
+            pushLog("✅ Symbol result received:");
             pushLog(result);
+            pushLog("✅ Raw result: (typeof)" + typeof result);
+            pushLog("✅ Raw result: " + String(result));
+          }),
+          catchError((err) => {
+            pushLog("❌ Symbol fetch failed.");
+            pushLog(`🔍 err type: ${typeof err}`);
+            pushLog(`🔍 err.toString(): ${String(err)}`);
+            pushLog(`🔍 full err:`, err);
+            return [];
           })
         )
         .subscribe();
-    } catch (err) {
-      pushLog("❌ Error fetching symbol info:");
-      pushLog(err?.message || String(err));
+    } catch (e) {
+      pushLog("💥 Sync error (symbol):");
+      pushLog(String(e));
     }
   }, [pushLog]);
 
@@ -104,6 +126,6 @@ export const useSpotwareClient = () => {
     connected,
     logs,
     getAccountInfo,
-    getSymbolInfo,
+    getSymbolInfo
   };
 };
