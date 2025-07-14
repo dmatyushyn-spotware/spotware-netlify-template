@@ -87,7 +87,7 @@ export const useSpotwareClient = () => {
 
           try {
             const json = JSON.stringify(result);
-            pushLog("✅ [STEP 5.1] First 30 chars: " + json.slice(0, 30));
+            pushLog("✅ [STEP 5.1] First 180 chars: " + json.slice(0, 180));
           } catch (e) {
             pushLog("❌ [STEP 5.2] JSON.stringify failed:");
             pushLog(e.message);
