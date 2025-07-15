@@ -4,7 +4,8 @@ import {
   handleConfirmEvent,
   registerEvent,
   getAccountInformation,
-  getSymbol
+  getSymbol,
+  createNewOrder, // Импортируем метод для создания ордера
 } from "@spotware-web-team/sdk";
 import { createLogger } from "@veksa/logger";
 import { take, tap, catchError } from "rxjs";
@@ -26,6 +27,7 @@ export const useSpotwareClient = () => {
     }
   }, []);
 
+  // Подключение к Spotware
   useEffect(() => {
     const logger = createLogger(true);
     adapter.current = createClientAdapter({ logger });
@@ -39,7 +41,6 @@ export const useSpotwareClient = () => {
         take(1),
         tap(() => {
           handleConfirmEvent(adapter.current, {}).pipe(take(1)).subscribe();
-
           setConnected(true);
           pushLog("✅ Connected to Spotware");
         }),
@@ -52,6 +53,7 @@ export const useSpotwareClient = () => {
       .subscribe();
   }, [pushLog]);
 
+  // Получение информации о счете
   const getAccountInfo = useCallback(() => {
     if (!adapter.current) {
       pushLog("⚠️ Not connected");
@@ -114,6 +116,7 @@ export const useSpotwareClient = () => {
       });
   }, [pushLog]);
 
+  // Получение информации о символе
   const getSymbolInfo = useCallback(() => {
     if (!adapter.current) {
       pushLog("⚠️ Not connected");
@@ -159,10 +162,41 @@ export const useSpotwareClient = () => {
     }
   }, [pushLog]);
 
+  // Функция для создания маркетного ордера
+  const createMarketOrder = useCallback((symbolId, volume, tradeSide) => {
+    if (!adapter.current) {
+      pushLog("⚠️ Not connected");
+      return;
+    }
+
+    pushLog("📦 Creating market order...");
+
+    createNewOrder(adapter.current, {
+      symbolId: symbolId,
+      orderType: "MARKET",  // Используем MARKET ордер
+      tradeSide: tradeSide,  // BUY или SELL
+      volume: volume,
+    })
+      .pipe(
+        take(1),
+        tap((result) => {
+          pushLog("✅ Market order created:");
+          pushLog(JSON.stringify(result, null, 2));
+        }),
+        catchError((err) => {
+          pushLog("❌ Error while creating market order:");
+          pushLog(String(err));
+          return [];
+        })
+      )
+      .subscribe();
+  }, [pushLog]);
+
   return {
     connected,
     logs,
     getAccountInfo,
-    getSymbolInfo
+    getSymbolInfo,
+    createMarketOrder, // Добавляем функцию для создания ордера
   };
 };
