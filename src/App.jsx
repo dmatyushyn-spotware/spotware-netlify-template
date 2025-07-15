@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useSpotwareClient } from "./spotwareClient";
 
 export default function App() {
-  const { connected, logs, createMarketOrder } = useSpotwareClient();
+  const { connected, logs, getAccountInfo, getSymbolInfo, createMarketOrder } = useSpotwareClient();
   const [newOrderSymbolId, setNewOrderSymbolId] = useState(1); // По умолчанию символ 1
   const [newOrderVolume, setNewOrderVolume] = useState(100000); // По умолчанию объем 100000
   const [newOrderTradeSide, setNewOrderTradeSide] = useState("BUY"); // По умолчанию покупка
@@ -16,9 +16,15 @@ export default function App() {
     <div style={{ padding: 20, fontFamily: "Arial" }}>
       <h2>Spotware Status: {connected ? "✅ Connected" : "❌ Not Connected"}</h2>
 
-      <button onClick={handleCreateNewOrder} disabled={!connected} style={{ marginTop: 10 }}>
-        Создать маркетный ордер
-      </button>
+      <div style={{ marginBottom: 20 }}>
+        <button onClick={getAccountInfo} disabled={!connected}>
+          Получить информацию о счете
+        </button>
+
+        <button onClick={getSymbolInfo} disabled={!connected} style={{ marginLeft: 10 }}>
+          Получить информацию о символе
+        </button>
+      </div>
 
       <div style={{ marginTop: 20 }}>
         <div>
@@ -55,6 +61,10 @@ export default function App() {
             </select>
           </label>
         </div>
+
+        <button onClick={handleCreateNewOrder} disabled={!connected} style={{ marginTop: 10 }}>
+          Создать маркетный ордер
+        </button>
       </div>
 
       <div
