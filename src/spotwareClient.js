@@ -5,7 +5,7 @@ import {
   registerEvent,
   getAccountInformation,
   getSymbol,
-  createNewOrder, // Импортируем метод для создания ордера
+  createNewOrder,
 } from "@spotware-web-team/sdk";
 import { createLogger } from "@veksa/logger";
 import { take, tap, catchError } from "rxjs";
@@ -105,9 +105,9 @@ export const useSpotwareClient = () => {
         }),
         catchError((err) => {
           pushLog("❌ [STEP 6] catchError triggered");
-          // pushLog(🔍 err type: ${typeof err});
-          // pushLog(🔍 err.toString(): ${String(err)});
-          // pushLog(🔍 full err:, err);
+          pushLog(`🔍 err type: ${typeof err}`);
+          pushLog(`🔍 err.toString(): ${String(err)}`);
+          pushLog(`🔍 full err: ${JSON.stringify(err, null, 2)}`);
           return [];
         })
       )
@@ -149,9 +149,9 @@ export const useSpotwareClient = () => {
           }),
           catchError((err) => {
             pushLog("❌ Symbol fetch failed.");
-            pushLog(err type: ${typeof err});
-            pushLog(err.toString(): ${String(err)});
-            pushLog(full err:, err);
+            pushLog(`🔍 err type: ${typeof err}`);
+            pushLog(`🔍 err.toString(): ${String(err)}`);
+            pushLog(`🔍 full err: ${JSON.stringify(err, null, 2)}`);
             return [];
           })
         )
@@ -173,8 +173,8 @@ export const useSpotwareClient = () => {
 
     createNewOrder(adapter.current, {
       symbolId: symbolId,
-      orderType: "MARKET",  // Используем MARKET ордер
-      tradeSide: tradeSide,  // BUY или SELL
+      orderType: "MARKET",
+      tradeSide: tradeSide,
       volume: volume,
     })
       .pipe(
@@ -197,6 +197,6 @@ export const useSpotwareClient = () => {
     logs,
     getAccountInfo,
     getSymbolInfo,
-    createMarketOrder, // Добавляем функцию для создания ордера
+    createMarketOrder,
   };
 };
