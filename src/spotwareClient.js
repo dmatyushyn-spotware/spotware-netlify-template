@@ -149,9 +149,9 @@ export const useSpotwareClient = () => {
           }),
           catchError((err) => {
             pushLog("❌ Symbol fetch failed.");
-            pushLog(🔍 err type: ${typeof err});
-            pushLog(🔍 err.toString(): ${String(err)});
-            pushLog(🔍 full err:, err);
+            pushLog(err type: ${typeof err});
+            pushLog(err.toString(): ${String(err)});
+            pushLog(full err:, err);
             return [];
           })
         )
