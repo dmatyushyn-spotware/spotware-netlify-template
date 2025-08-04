@@ -105,9 +105,9 @@ export const useSpotwareClient = () => {
         }),
         catchError((err) => {
           pushLog("❌ [STEP 6] catchError triggered");
-          pushLog(err type: ${typeof err});
-          pushLog(err.toString(): ${String(err)});
-          pushLog(full err:, err);
+          pushLog(🔍 err type: ${typeof err});
+          pushLog(🔍 err.toString(): ${String(err)});
+          pushLog(🔍 full err:, err);
           return [];
         })
       )
@@ -148,12 +148,12 @@ export const useSpotwareClient = () => {
             }
           }),
           catchError((err) => {
-              pushLog("❌ [STEP 6] catchError triggered");
-              pushLog(`err type: ${typeof err}`);
-              pushLog(`err.toString(): ${String(err)}`);
-              pushLog(`full err: ${JSON.stringify(err, null, 2)}`);
-              return [];
-            })
+            pushLog("❌ Symbol fetch failed.");
+            pushLog(🔍 err type: ${typeof err});
+            pushLog(🔍 err.toString(): ${String(err)});
+            pushLog(🔍 full err:, err);
+            return [];
+          })
         )
         .subscribe();
     } catch (e) {
