@@ -171,18 +171,18 @@ export const useSpotwareClient = () => {
 
     pushLog("📦 Creating market order...");
 
-createNewOrder(adapter.current, {
-  symbolId,
-  orderType: "MARKET",
-  tradeSide,
-  volume,
-})
-  .pipe(take(1))
-  .subscribe({
-    next: (result) => pushLog("📥 NEXT: " + JSON.stringify(result, null, 2)),
-    error: (err) => pushLog("💥 ERROR: " + String(err)),
-    complete: () => pushLog("🏁 COMPLETE: Stream ended"),
-  });
+    createNewOrder(adapter.current, {
+      symbolId,
+      orderType: "MARKET",
+      tradeSide,
+      volume,
+    })
+      .pipe(take(1))
+      .subscribe({
+        next: (result) => pushLog("📥 NEXT: " + JSON.stringify(result, null, 2)),
+        error: (err) => pushLog("💥 ERROR: " + String(err)),
+        complete: () => pushLog("🏁 COMPLETE: Stream ended"),
+      });
 
   return {
     connected,
