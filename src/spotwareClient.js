@@ -6,18 +6,18 @@ import {
   getAccountInformation,
   getSymbol,
   createNewOrder,
-  executionEvent, // добавлено
-  ServerInterfaces // добавлено
+  executionEvent,
+  ServerInterfaces
 } from "@spotware-web-team/sdk";
 import { createLogger } from "@veksa/logger";
 import { take, tap, catchError } from "rxjs";
 
 export const useSpotwareClient = () => {
-  const adapter = useRef(null);
+  const adapter = useRef<any>(null);
   const [connected, setConnected] = useState(false);
-  const [logs, setLogs] = useState([]);
+  const [logs, setLogs] = useState<string[]>([]);
 
-  const pushLog = useCallback((msg, obj = null) => {
+  const pushLog = useCallback((msg: any, obj: any = null) => {
     if (typeof msg === "object") {
       setLogs((prev) => [...prev, JSON.stringify(msg, null, 2)]);
     } else {
@@ -28,7 +28,7 @@ export const useSpotwareClient = () => {
     }
   }, []);
 
-  // Подключение к Spotware
+  // Подключение
   useEffect(() => {
     const logger = createLogger(true);
     adapter.current = createClientAdapter({ logger });
@@ -60,8 +60,9 @@ export const useSpotwareClient = () => {
       executionEvent(adapter.current)
         .pipe(
           tap((event) => {
-            pushLog("📬 Execution event received:");
-            pushLog(JSON.stringify(event, null, 2));
+            const status = event?.payload?.payload?.executionType;
+            pushLog(`📬 Execution event received (Status: ${status})`);
+            pushLog(event);
           }),
           catchError((err) => {
             pushLog("❌ Error while listening to executionEvent:");
@@ -80,59 +81,56 @@ export const useSpotwareClient = () => {
       return;
     }
 
-    pushLog("📰 [STEP 1] Starting getAccountInformation");
+    pushLog("📰 Starting getAccountInformation");
 
     let observable;
 
     try {
       observable = getAccountInformation(adapter.current, {});
-      pushLog("✅ [STEP 2] getAccountInformation returned");
-    } catch (e) {
-      pushLog("💥 [STEP 2.1] Exception during getAccountInformation:");
+      pushLog("✅ getAccountInformation returned");
+    } catch (e: any) {
+      pushLog("💥 Exception during getAccountInformation:");
       pushLog(e.message || String(e));
       return;
     }
 
     if (!observable || typeof observable.pipe !== "function") {
-      pushLog("❌ [STEP 3] Invalid observable returned");
+      pushLog("❌ Invalid observable returned");
       pushLog(observable);
       return;
     }
 
-    pushLog("🔁 [STEP 4] Starting pipe/subscribe");
+    pushLog("🔁 Subscribing to observable");
 
     observable
       .pipe(
         take(1),
         tap((result) => {
-          pushLog("📥 [STEP 5] tap() triggered");
-
+          pushLog("📥 Account info received:");
           try {
             const json = JSON.stringify(result);
-            pushLog("✅ [STEP 5.1] First 180 chars: " + json.slice(0, 180));
-          } catch (e) {
-            pushLog("❌ [STEP 5.2] JSON.stringify failed:");
+            pushLog("✅ First 180 chars: " + json.slice(0, 180));
+          } catch (e: any) {
+            pushLog("❌ JSON.stringify failed:");
             pushLog(e.message);
           }
 
           const trader = result?.payload?.payload?.Trader;
           if (trader) {
-            pushLog("👤 [STEP 5.3] Trader info found:");
+            pushLog("👤 Trader info:");
             pushLog(trader);
           } else {
-            pushLog("⚠️ [STEP 5.4] Trader field missing");
+            pushLog("⚠️ Trader field missing");
           }
         }),
         catchError((err) => {
-          pushLog("❌ [STEP 6] catchError triggered");
-          pushLog(`🔍 err type: ${typeof err}`);
-          pushLog(`🔍 err.toString(): ${String(err)}`);
-          pushLog(`🔍 full err:`, err);
+          pushLog("❌ Error fetching account info:");
+          pushLog(String(err));
           return [];
         })
       )
       .subscribe(() => {
-        pushLog("📤 [STEP 7] subscribe completed");
+        pushLog("📤 Account info subscribe completed");
       });
   }, [pushLog]);
 
@@ -150,58 +148,58 @@ export const useSpotwareClient = () => {
         .pipe(
           take(1),
           tap((result) => {
-            pushLog("✅ Symbol result received:");
+            pushLog("✅ Symbol info received:");
             try {
               const symbolData = result?.payload?.payload;
               if (symbolData) {
                 pushLog("📊 Symbol Payload:");
                 pushLog(symbolData);
               } else {
-                pushLog("⚠️ Symbol payload not found in response");
+                pushLog("⚠️ Symbol payload not found");
               }
-
               pushLog("🧾 Full symbol response:");
-              pushLog(JSON.stringify(result, null, 2));
-            } catch (e) {
-              pushLog("💥 Error while processing symbol response:");
+              pushLog(result);
+            } catch (e: any) {
+              pushLog("💥 Error processing symbol response:");
               pushLog(String(e));
             }
           }),
           catchError((err) => {
-            pushLog("❌ Symbol fetch failed.");
-            pushLog(`🔍 err type: ${typeof err}`);
-            pushLog(`🔍 err.toString(): ${String(err)}`);
-            pushLog(`🔍 full err:`, err);
+            pushLog("❌ Symbol fetch failed:");
+            pushLog(String(err));
             return [];
           })
         )
         .subscribe();
-    } catch (e) {
-      pushLog("💥 Sync error (symbol):");
+    } catch (e: any) {
+      pushLog("💥 Sync error fetching symbol:");
       pushLog(String(e));
     }
   }, [pushLog]);
 
-  // Функция для создания маркетного ордера
-  const createMarketOrder = useCallback((symbolId, volume, tradeSide) => {
+  // Создание маркетного ордера (BUY/SELL)
+  const createMarketOrder = useCallback((symbolId: number, volume: number, side: "BUY" | "SELL") => {
     if (!adapter.current) {
       pushLog("⚠️ Not connected");
       return;
     }
 
-    pushLog("📦 Creating market order...");
+    pushLog(`📦 Creating ${side} market order...`);
 
     createNewOrder(adapter.current, {
       symbolId: symbolId,
-      orderType: ServerInterfaces.ProtoOrderType.MARKET, // используем enum
-      tradeSide: tradeSide, // также enum BUY или SELL
+      orderType: ServerInterfaces.ProtoOrderType.MARKET,
+      tradeSide:
+        side === "BUY"
+          ? ServerInterfaces.ProtoTradeSide.BUY
+          : ServerInterfaces.ProtoTradeSide.SELL,
       volume: volume,
     })
       .pipe(
         take(1),
         tap((result) => {
-          pushLog("✅ Market order created (server response):");
-          pushLog(JSON.stringify(result, null, 2));
+          pushLog("✅ Server confirmed order creation:");
+          pushLog(result);
         }),
         catchError((err) => {
           pushLog("❌ Error while creating market order:");
