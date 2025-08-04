@@ -149,9 +149,9 @@ export const useSpotwareClient = () => {
           }),
           catchError((err) => {
               pushLog("❌ [STEP 6] catchError triggered");
-              pushLog(`🔍 err type: ${typeof err}`);
-              pushLog(`🔍 err.toString(): ${String(err)}`);
-              pushLog(`🔍 full err: ${JSON.stringify(err, null, 2)}`);
+              pushLog(`err type: ${typeof err}`);
+              pushLog(`err.toString(): ${String(err)}`);
+              pushLog(`full err: ${JSON.stringify(err, null, 2)}`);
               return [];
             })
         )
