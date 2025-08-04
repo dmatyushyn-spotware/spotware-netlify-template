@@ -1,285 +1,202 @@
-import { FC, useCallback, useEffect, useRef, useState } from "react";
-import { createClientAdapter, IExternalTransportAdapter } from "@spotware-web-team/sdk-external-api";
+import { useEffect, useRef, useState, useCallback } from "react";
+import { createClientAdapter } from "@spotware-web-team/sdk-external-api";
 import {
-    cancelOrder,
-    closePosition,
-    createNewOrder,
-    executionEvent,
-    getAccountGroupInformation,
-    getAccountInformation,
-    getDealList,
-    getDynamicLeverage,
-    getLightSymbolList,
-    getSymbol,
-    handleConfirmEvent,
-    modifyOrder,
-    modifyOrderProtection,
-    quoteEvent,
-    registerEvent,
-    ServerInterfaces,
-    subscribeQuotes,
-    unsubscribeQuotes,
+  handleConfirmEvent,
+  registerEvent,
+  getAccountInformation,
+  getSymbol,
+  createNewOrder, // Импортируем метод для создания ордера
 } from "@spotware-web-team/sdk";
-import { catchError, take, tap } from "rxjs";
 import { createLogger } from "@veksa/logger";
+import { take, tap, catchError } from "rxjs";
 
-export const Example: FC = () => {
-    const [connected, setConnected] = useState(false);
-    const adapter = useRef<IExternalTransportAdapter>(null);
+export const useSpotwareClient = () => {
+  const adapter = useRef(null);
+  const [connected, setConnected] = useState(false);
+  const [logs, setLogs] = useState([]);
 
-    const [logs, setLogs] = useState<string[]>([]);
-    const [symbolId, setSymbolId] = useState<number>(1);
-    const [quotesSymbolId, setQuotesSymbolId] = useState<number>(1);
-    const [leverageId, setLeverageId] = useState<number>(1);
-    const [newOrderSymbolId, setNewOrderSymbolId] = useState(1);
-    const [newOrderVolume, setNewOrderVolume] = useState(100000);
-    const [modifyOrderId, setModifyOrderId] = useState(1);
-    const [modifyOrderVolume, setModifyOrderVolume] = useState(100000);
-    const [modifyPositionId, setModifyPositionId] = useState(1);
-    const [modifyStopLoss, setModifyStopLoss] = useState(0.1);
-    const [modifyPrice, setModifyPrice] = useState(100);
-    const [modifyTakeProfit, setModifyTakeProfit] = useState(0.1);
-    const [cancelOrderId, setCancelOrderId] = useState(1);
-    const [closePositionId, setClosePositionId] = useState(1);
-    const [closePositionVolume, setClosePositionVolume] = useState(100000);
+  const pushLog = useCallback((msg, obj = null) => {
+    if (typeof msg === "object") {
+      setLogs((prev) => [...prev, JSON.stringify(msg, null, 2)]);
+    } else {
+      setLogs((prev) => [...prev, String(msg)]);
+    }
 
-    useEffect(() => {
-        const isLogEnabled = window.location.href.includes("showLogs");
-        const logger = createLogger(isLogEnabled);
+    if (obj) {
+      setLogs((prev) => [...prev, JSON.stringify(obj, null, 2)]);
+    }
+  }, []);
 
-        adapter.current = createClientAdapter({ logger });
+  // Подключение к Spotware
+  useEffect(() => {
+    const logger = createLogger(true);
+    adapter.current = createClientAdapter({ logger });
 
-        if (isLogEnabled) {
-            logger.info("Mounted");
-        }
+    pushLog("🔌 Connecting to Spotware...");
 
-        handleConfirmEvent(adapter.current, {}).pipe(take(1)).subscribe();
+    handleConfirmEvent(adapter.current, {}).pipe(take(1)).subscribe();
 
-        registerEvent(adapter.current)
-            .pipe(
-                take(1),
-                tap(() => {
-                    handleConfirmEvent(adapter.current, {}).pipe(take(1)).subscribe();
-                    setConnected(true);
-                }),
-                catchError(() => {
-                    setLogs(prevLogs => [...prevLogs, "❌ Error host connection"]);
-                    return [];
-                })
-            )
-            .subscribe();
-    }, []);
+    registerEvent(adapter.current)
+      .pipe(
+        take(1),
+        tap(() => {
+          handleConfirmEvent(adapter.current, {}).pipe(take(1)).subscribe();
+          setConnected(true);
+          pushLog("✅ Connected to Spotware");
+        }),
+        catchError((err) => {
+          pushLog("❌ Connection failed:");
+          pushLog(err?.message || String(err));
+          return [];
+        })
+      )
+      .subscribe();
+  }, [pushLog]);
 
-    const logResult = (prefix: string, result: any) => {
-        const msg = typeof result === "string" ? result : JSON.stringify(result, null, 2);
-        setLogs(prevLogs => [...prevLogs, `${prefix}: ${msg}`]);
-    };
+  // Получение информации о счете
+  const getAccountInfo = useCallback(() => {
+    if (!adapter.current) {
+      pushLog("⚠️ Not connected");
+      return;
+    }
 
-    const handleAccountInformation = useCallback(() => {
-        getAccountInformation(adapter.current, {}).pipe(
-            take(1),
-            tap(result => logResult("ℹ️ Account Info", result))
-        ).subscribe();
-    }, []);
+    pushLog("📰 [STEP 1] Starting getAccountInformation");
 
-    const handleAccountGroupInformation = useCallback(() => {
-        getAccountGroupInformation(adapter.current, {}).pipe(
-            take(1),
-            tap(result => logResult("ℹ️ Account Group Info", result))
-        ).subscribe();
-    }, []);
+    let observable;
 
-    const handleLightSymbolList = useCallback(() => {
-        getLightSymbolList(adapter.current, {}).pipe(
-            take(1),
-            tap(result => logResult("📄 Light Symbol List", result))
-        ).subscribe();
-    }, []);
+    try {
+      observable = getAccountInformation(adapter.current, {});
+      pushLog("✅ [STEP 2] getAccountInformation returned");
+    } catch (e) {
+      pushLog("💥 [STEP 2.1] Exception during getAccountInformation:");
+      pushLog(e.message || String(e));
+      return;
+    }
 
-    const handleSymbol = useCallback(() => {
-        getSymbol(adapter.current, { symbolId: [symbolId] }).pipe(
-            take(1),
-            tap(result => logResult("📊 Symbol Info", result))
-        ).subscribe();
-    }, [symbolId]);
+    if (!observable || typeof observable.pipe !== "function") {
+      pushLog("❌ [STEP 3] Invalid observable returned");
+      pushLog(observable);
+      return;
+    }
 
-    const handleSubscribeQuotes = useCallback(() => {
-        subscribeQuotes(adapter.current, { symbolId: [quotesSymbolId] }).pipe(
-            take(1),
-            tap(result => logResult("🔔 Subscribed Quotes", result))
-        ).subscribe();
-    }, [quotesSymbolId]);
+    pushLog("🔁 [STEP 4] Starting pipe/subscribe");
 
-    const handleUnsubscribeQuotes = useCallback(() => {
-        unsubscribeQuotes(adapter.current, { symbolId: [quotesSymbolId] }).pipe(
-            take(1),
-            tap(result => logResult("🔕 Unsubscribed Quotes", result))
-        ).subscribe();
-    }, [quotesSymbolId]);
+    observable
+      .pipe(
+        take(1),
+        tap((result) => {
+          pushLog("📥 [STEP 5] tap() triggered");
 
-    const handleDynamicLeverage = useCallback(() => {
-        getDynamicLeverage(adapter.current, { leverageId }).pipe(
-            take(1),
-            tap(result => logResult("⚖️ Dynamic Leverage", result))
-        ).subscribe();
-    }, [leverageId]);
+          try {
+            const json = JSON.stringify(result);
+            pushLog("✅ [STEP 5.1] First 180 chars: " + json.slice(0, 180));
+          } catch (e) {
+            pushLog("❌ [STEP 5.2] JSON.stringify failed:");
+            pushLog(e.message);
+          }
 
-    const handleDealList = useCallback(() => {
-        getDealList(adapter.current, { fromTimestamp: 0, toTimestamp: Date.now() }).pipe(
-            take(1),
-            tap(result => logResult("📜 Deal List", result))
-        ).subscribe();
-    }, []);
+          const trader = result?.payload?.payload?.Trader;
+          if (trader) {
+            pushLog("👤 [STEP 5.3] Trader info found:");
+            pushLog(trader);
+          } else {
+            pushLog("⚠️ [STEP 5.4] Trader field missing");
+          }
+        }),
+        catchError((err) => {
+          pushLog("❌ [STEP 6] catchError triggered");
+          pushLog(🔍 err type: ${typeof err});
+          pushLog(🔍 err.toString(): ${String(err)});
+          pushLog(🔍 full err:, err);
+          return [];
+        })
+      )
+      .subscribe(() => {
+        pushLog("📤 [STEP 7] subscribe completed");
+      });
+  }, [pushLog]);
 
-    // 🔑 Основная логика createNewOrder с логированием ошибок и успеха
-    const handleCreateNewOrder = useCallback(() => {
-        createNewOrder(adapter.current, {
-            symbolId: newOrderSymbolId,
-            orderType: ServerInterfaces.ProtoOrderType.MARKET,
-            tradeSide: ServerInterfaces.ProtoTradeSide.BUY,
-            volume: newOrderVolume,
-        }).pipe(
-            tap(result => {
-                const payloadType = result?.payloadType;
-                if (payloadType === 138) { // PROTO_ORDER_ERROR_EVENT
-                    logResult("❌ Order Error", result);
-                } else {
-                    logResult("✅ Order Created", result);
-                }
-            })
-        ).subscribe();
-    }, [newOrderSymbolId, newOrderVolume]);
+  // Получение информации о символе
+  const getSymbolInfo = useCallback(() => {
+    if (!adapter.current) {
+      pushLog("⚠️ Not connected");
+      return;
+    }
 
-    const handleModifyOrder = useCallback(() => {
-        modifyOrder(adapter.current, {
-            orderId: modifyOrderId,
-            limitPrice: modifyPrice,
-            volume: modifyOrderVolume,
-        }).pipe(
-            tap(result => logResult("✏️ Order Modified", result))
-        ).subscribe();
-    }, [modifyOrderId, modifyOrderVolume, modifyPrice]);
+    pushLog("📈 Fetching symbol info...");
 
-    const handleModifyOrderProtection = useCallback(() => {
-        modifyOrderProtection(adapter.current, {
-            positionId: modifyPositionId,
-            stopLoss: modifyStopLoss,
-            takeProfit: modifyTakeProfit,
-        }).pipe(
-            tap(result => logResult("🛡️ Order Protection Modified", result))
-        ).subscribe();
-    }, [modifyPositionId, modifyStopLoss, modifyTakeProfit]);
+    try {
+      getSymbol(adapter.current, { symbolId: [1] })
+        .pipe(
+          take(1),
+          tap((result) => {
+            pushLog("✅ Symbol result received:");
+            try {
+              const symbolData = result?.payload?.payload;
+              if (symbolData) {
+                pushLog("📊 Symbol Payload:");
+                pushLog(symbolData);
+              } else {
+                pushLog("⚠️ Symbol payload not found in response");
+              }
 
-    const handleCancelOrder = useCallback(() => {
-        cancelOrder(adapter.current, {
-            orderId: cancelOrderId,
-        }).pipe(
-            tap(result => logResult("🚫 Order Canceled", result))
-        ).subscribe();
-    }, [cancelOrderId]);
+              pushLog("🧾 Full symbol response:");
+              pushLog(JSON.stringify(result, null, 2));
+            } catch (e) {
+              pushLog("💥 Error while processing symbol response:");
+              pushLog(String(e));
+            }
+          }),
+          catchError((err) => {
+            pushLog("❌ Symbol fetch failed.");
+            pushLog(🔍 err type: ${typeof err});
+            pushLog(🔍 err.toString(): ${String(err)});
+            pushLog(🔍 full err:, err);
+            return [];
+          })
+        )
+        .subscribe();
+    } catch (e) {
+      pushLog("💥 Sync error (symbol):");
+      pushLog(String(e));
+    }
+  }, [pushLog]);
 
-    const handleClosePosition = useCallback(() => {
-        closePosition(adapter.current, {
-            positionId: closePositionId,
-            volume: closePositionVolume,
-        }).pipe(
-            tap(result => logResult("🔒 Position Closed", result))
-        ).subscribe();
-    }, [closePositionId, closePositionVolume]);
+  // Функция для создания маркетного ордера
+  const createMarketOrder = useCallback((symbolId, volume, tradeSide) => {
+    if (!adapter.current) {
+      pushLog("⚠️ Not connected");
+      return;
+    }
 
-    useEffect(() => {
-        if (connected) {
-            quoteEvent(adapter.current).pipe(
-                tap(result => logResult("💬 Quote Event", result))
-            ).subscribe();
+    pushLog("📦 Creating market order...");
 
-            executionEvent(adapter.current).pipe(
-                tap(result => logResult("📬 Execution Event", result))
-            ).subscribe();
-        }
-    }, [connected]);
+    createNewOrder(adapter.current, {
+      symbolId: symbolId,
+      orderType: "MARKET",  // Используем MARKET ордер
+      tradeSide: tradeSide,  // BUY или SELL
+      volume: volume,
+    })
+      .pipe(
+        take(1),
+        tap((result) => {
+          pushLog("✅ Market order created:");
+          pushLog(JSON.stringify(result, null, 2));
+        }),
+        catchError((err) => {
+          pushLog("❌ Error while creating market order:");
+          pushLog(String(err));
+          return [];
+        })
+      )
+      .subscribe();
+  }, [pushLog]);
 
-    return (
-        <div style={{ display: "flex", flexDirection: "column", width: "100%", padding: "10px", overflow: "auto", backgroundColor: "#fff", color: "#000" }}>
-            <div style={{ display: "flex", alignItems: "flex-start", flexDirection: "column", gap: "10px", flexWrap: "wrap", marginBottom: "10px" }}>
-                <button disabled={!connected} onClick={handleAccountInformation}>getAccountInformation</button>
-                <button disabled={!connected} onClick={handleAccountGroupInformation}>getAccountGroupInformation</button>
-                <button disabled={!connected} onClick={handleLightSymbolList}>getLightSymbolList</button>
-
-                <div>
-                    <button disabled={!connected} onClick={handleSymbol}>getSymbol</button>
-                    <span style={{ marginLeft: 5 }}>symbolId:</span>
-                    <input style={{ width: 30 }} value={symbolId} onChange={e => setSymbolId(Number(e.target.value))} />
-                </div>
-
-                <div>
-                    <button disabled={!connected} onClick={handleSubscribeQuotes}>subscribeQuotes</button>
-                    <span style={{ marginLeft: 5 }}>symbolId:</span>
-                    <input style={{ width: 30 }} value={quotesSymbolId} onChange={e => setQuotesSymbolId(Number(e.target.value))} />
-                </div>
-
-                <div>
-                    <button disabled={!connected} onClick={handleUnsubscribeQuotes}>unsubscribeQuotes</button>
-                    <span style={{ marginLeft: 5 }}>symbolId:</span>
-                    <input style={{ width: 30 }} value={quotesSymbolId} onChange={e => setQuotesSymbolId(Number(e.target.value))} />
-                </div>
-
-                <div>
-                    <button disabled={!connected} onClick={handleDynamicLeverage}>getDynamicLeverage</button>
-                    <span style={{ marginLeft: 5 }}>leverageId:</span>
-                    <input style={{ width: 30 }} value={leverageId} onChange={e => setLeverageId(Number(e.target.value))} />
-                </div>
-
-                <button disabled={!connected} onClick={handleDealList}>getDealList</button>
-
-                <div>
-                    <button disabled={!connected} onClick={handleCreateNewOrder}>createNewOrder</button>
-                    <span style={{ marginLeft: 5 }}>symbolId:</span>
-                    <input style={{ width: 30 }} value={newOrderSymbolId} onChange={e => setNewOrderSymbolId(Number(e.target.value))} />
-                    <span style={{ marginLeft: 5 }}>volume:</span>
-                    <input style={{ width: 50 }} value={newOrderVolume} onChange={e => setNewOrderVolume(Number(e.target.value))} />
-                </div>
-
-                <div>
-                    <button disabled={!connected} onClick={handleModifyOrder}>modifyOrder</button>
-                    <span style={{ marginLeft: 5 }}>orderId:</span>
-                    <input style={{ width: 30 }} value={modifyOrderId} onChange={e => setModifyOrderId(Number(e.target.value))} />
-                    <span style={{ marginLeft: 5 }}>volume:</span>
-                    <input style={{ width: 50 }} value={modifyOrderVolume} onChange={e => setModifyOrderVolume(Number(e.target.value))} />
-                    <span style={{ marginLeft: 5 }}>modify price:</span>
-                    <input style={{ width: 30 }} value={modifyPrice} onChange={e => setModifyPrice(Number(e.target.value))} />
-                </div>
-
-                <div>
-                    <button disabled={!connected} onClick={handleModifyOrderProtection}>modifyOrderProtection</button>
-                    <span style={{ marginLeft: 5 }}>positionId:</span>
-                    <input style={{ width: 30 }} value={modifyPositionId} onChange={e => setModifyPositionId(Number(e.target.value))} />
-                    <span style={{ marginLeft: 5 }}>stop loss:</span>
-                    <input style={{ width: 30 }} value={modifyStopLoss} onChange={e => setModifyStopLoss(Number(e.target.value))} />
-                    <span style={{ marginLeft: 5 }}>takeProfit:</span>
-                    <input style={{ width: 30 }} value={modifyTakeProfit} onChange={e => setModifyTakeProfit(Number(e.target.value))} />
-                </div>
-
-                <div>
-                    <button disabled={!connected} onClick={handleCancelOrder}>cancelOrder</button>
-                    <span style={{ marginLeft: 5 }}>orderId:</span>
-                    <input style={{ width: 30 }} value={cancelOrderId} onChange={e => setCancelOrderId(Number(e.target.value))} />
-                </div>
-
-                <div>
-                    <button disabled={!connected} onClick={handleClosePosition}>closePosition</button>
-                    <span style={{ marginLeft: 5 }}>positionId:</span>
-                    <input style={{ width: 30 }} value={closePositionId} onChange={e => setClosePositionId(Number(e.target.value))} />
-                    <span style={{ marginLeft: 5 }}>volume:</span>
-                    <input style={{ width: 50 }} value={closePositionVolume} onChange={e => setClosePositionVolume(Number(e.target.value))} />
-                </div>
-            </div>
-
-            <div style={{ height: "100%", overflowY: "scroll", minHeight: 200 }}>
-                {logs.map((log, index) => (
-                    <div key={index} style={{ marginBottom: "10px" }}>{log}</div>
-                ))}
-            </div>
-        </div>
-    );
+  return {
+    connected,
+    logs,
+    getAccountInfo,
+    getSymbolInfo,
+    createMarketOrder, // Добавляем функцию для создания ордера
+  };
 };
