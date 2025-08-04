@@ -7,6 +7,7 @@ import {
   getSymbol,
   createNewOrder,
   executionEvent,
+  orderErrorEvent,
   ServerInterfaces
 } from "@spotware-web-team/sdk";
 import { createLogger } from "@veksa/logger";
@@ -74,6 +75,25 @@ export const useSpotwareClient = () => {
     }
   }, [connected, pushLog]);
 
+  // Подписка на ошибки ордеров
+  useEffect(() => {
+    if (connected && adapter.current) {
+      orderErrorEvent(adapter.current)
+        .pipe(
+          tap((event) => {
+            pushLog("❌ Order error event received:");
+            pushLog(event);
+          }),
+          catchError((err) => {
+            pushLog("❌ Error while listening to orderErrorEvent:");
+            pushLog(String(err));
+            return [];
+          })
+        )
+        .subscribe();
+    }
+  }, [connected, pushLog]);
+
   // Получение информации о счете
   const getAccountInfo = useCallback(() => {
     if (!adapter.current) {
@@ -99,8 +119,6 @@ export const useSpotwareClient = () => {
       pushLog(observable);
       return;
     }
-
-    pushLog("🔁 Subscribing to observable");
 
     observable
       .pipe(
