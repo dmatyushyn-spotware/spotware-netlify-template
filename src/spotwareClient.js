@@ -5,7 +5,9 @@ import {
   registerEvent,
   getAccountInformation,
   getSymbol,
-  createNewOrder, // Импортируем метод для создания ордера
+  createNewOrder,
+  executionEvent, // добавлено
+  ServerInterfaces // добавлено
 } from "@spotware-web-team/sdk";
 import { createLogger } from "@veksa/logger";
 import { take, tap, catchError } from "rxjs";
@@ -21,7 +23,6 @@ export const useSpotwareClient = () => {
     } else {
       setLogs((prev) => [...prev, String(msg)]);
     }
-
     if (obj) {
       setLogs((prev) => [...prev, JSON.stringify(obj, null, 2)]);
     }
@@ -52,6 +53,25 @@ export const useSpotwareClient = () => {
       )
       .subscribe();
   }, [pushLog]);
+
+  // Подписка на исполнение ордеров
+  useEffect(() => {
+    if (connected && adapter.current) {
+      executionEvent(adapter.current)
+        .pipe(
+          tap((event) => {
+            pushLog("📬 Execution event received:");
+            pushLog(JSON.stringify(event, null, 2));
+          }),
+          catchError((err) => {
+            pushLog("❌ Error while listening to executionEvent:");
+            pushLog(String(err));
+            return [];
+          })
+        )
+        .subscribe();
+    }
+  }, [connected, pushLog]);
 
   // Получение информации о счете
   const getAccountInfo = useCallback(() => {
@@ -173,14 +193,14 @@ export const useSpotwareClient = () => {
 
     createNewOrder(adapter.current, {
       symbolId: symbolId,
-      orderType: "MARKET",  // Используем MARKET ордер
-      tradeSide: tradeSide,  // BUY или SELL
+      orderType: ServerInterfaces.ProtoOrderType.MARKET, // используем enum
+      tradeSide: tradeSide, // также enum BUY или SELL
       volume: volume,
     })
       .pipe(
         take(1),
         tap((result) => {
-          pushLog("✅ Market order created:");
+          pushLog("✅ Market order created (server response):");
           pushLog(JSON.stringify(result, null, 2));
         }),
         catchError((err) => {
@@ -197,6 +217,6 @@ export const useSpotwareClient = () => {
     logs,
     getAccountInfo,
     getSymbolInfo,
-    createMarketOrder, // Добавляем функцию для создания ордера
+    createMarketOrder,
   };
 };
