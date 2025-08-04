@@ -13,11 +13,11 @@ import { createLogger } from "@veksa/logger";
 import { take, tap, catchError } from "rxjs";
 
 export const useSpotwareClient = () => {
-  const adapter = useRef<any>(null);
+  const adapter = useRef(null);
   const [connected, setConnected] = useState(false);
-  const [logs, setLogs] = useState<string[]>([]);
+  const [logs, setLogs] = useState([]);
 
-  const pushLog = useCallback((msg: any, obj: any = null) => {
+  const pushLog = useCallback((msg, obj = null) => {
     if (typeof msg === "object") {
       setLogs((prev) => [...prev, JSON.stringify(msg, null, 2)]);
     } else {
@@ -88,7 +88,7 @@ export const useSpotwareClient = () => {
     try {
       observable = getAccountInformation(adapter.current, {});
       pushLog("✅ getAccountInformation returned");
-    } catch (e: any) {
+    } catch (e) {
       pushLog("💥 Exception during getAccountInformation:");
       pushLog(e.message || String(e));
       return;
@@ -110,7 +110,7 @@ export const useSpotwareClient = () => {
           try {
             const json = JSON.stringify(result);
             pushLog("✅ First 180 chars: " + json.slice(0, 180));
-          } catch (e: any) {
+          } catch (e) {
             pushLog("❌ JSON.stringify failed:");
             pushLog(e.message);
           }
@@ -159,7 +159,7 @@ export const useSpotwareClient = () => {
               }
               pushLog("🧾 Full symbol response:");
               pushLog(result);
-            } catch (e: any) {
+            } catch (e) {
               pushLog("💥 Error processing symbol response:");
               pushLog(String(e));
             }
@@ -171,14 +171,14 @@ export const useSpotwareClient = () => {
           })
         )
         .subscribe();
-    } catch (e: any) {
+    } catch (e) {
       pushLog("💥 Sync error fetching symbol:");
       pushLog(String(e));
     }
   }, [pushLog]);
 
   // Создание маркетного ордера (BUY/SELL)
-  const createMarketOrder = useCallback((symbolId: number, volume: number, side: "BUY" | "SELL") => {
+  const createMarketOrder = useCallback((symbolId, volume, side) => {
     if (!adapter.current) {
       pushLog("⚠️ Not connected");
       return;
