@@ -189,7 +189,13 @@ export const useSpotwareClient = () => {
             return [];
           })
         )
-        .subscribe();
+        .subscribe(
+          {
+            next: (result) => pushLog("📥 NEXT: " + JSON.stringify(result, null, 2)),
+            error: (err) => pushLog("💥 ERROR: " + String(err)),
+            complete: () => pushLog("🏁 COMPLETE: Stream ended"),
+          }
+        );
     }, [pushLog]);
 
   return {
